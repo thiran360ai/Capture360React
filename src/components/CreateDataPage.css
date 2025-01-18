@@ -1,0 +1,91 @@
+.create-plan-page-container {
+    padding: 30px;
+    max-width: 700px;
+    margin: 50px auto;
+    background-color: #ffffff;
+    border-radius: 15px;
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .create-plan-page-title {
+    text-align: center;
+    margin-bottom: 30px;
+    font-weight: bold;
+    color: #333;
+  }
+  
+  .create-plan-page-form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .create-plan-page-text-field {
+    margin-bottom: 20px;
+  }
+  
+  .create-plan-page-text-field .MuiInputBase-root {
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  
+  .create-plan-page-text-field .MuiInputBase-root.Mui-focused {
+    border-color: #00509e;
+    box-shadow: 0 0 8px rgba(0, 123, 255, 0.25);
+  }
+  
+  .create-plan-page-upload-button {
+    margin-top: 10px;
+    background-color: #00509e;
+    color: #fff;
+  }
+  
+  .create-plan-page-upload-button:hover {
+    background-color: #00509e;
+  }
+  
+  .create-plan-page-submit-button {
+    margin-top: 20px;
+    background-color: #00509e;
+    color: #fff;
+  }
+  
+  .create-plan-page-submit-button:hover {
+    background-color: #00509e;
+  }
+  
+  .create-plan-page-snackbar {
+    display: flex;
+    justify-content: center;
+  }
+
+  .create-data-page-container {
+    width: 300px; /* Adjust as needed */
+    padding: 16px;
+  }
+  
+  .create-data-page-title {
+    font-size: 1.2rem;
+  }
+  
+  .create-data-page-form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .create-data-page-text-field,
+  .create-data-page-upload-button,
+  .create-data-page-submit-button {
+    margin-bottom: 8px; /* Reduce the margin for compact layout */
+  }
+  
+  .create-data-page-upload-button {
+    width: 100%;
+  }
+  
+  .create-data-page-submit-button {
+    width: 100%;
+  }
+  
+  .create-data-page-snackbar {
+    width: 100%;
+  }
+  

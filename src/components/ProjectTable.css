@@ -1,0 +1,27 @@
+/* ProjectTable.css */
+.project-table-container {
+    padding: 20px;
+  }
+  
+  .header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  
+  .header-container h2 {
+    margin: 0;
+  }
+  
+  .header-container .MuiButton-root {
+    /* Adjust margin if needed */
+    font-size: 0.75rem; /* Adjust font size */
+  padding: 6px 12px; /* Adjust padding */
+  }
+  
+  .create-project-button {
+    font-size: 0.75rem; /* Adjust font size */
+    padding: 2px 4px; /* Adjust padding */
+    width: 180px; /* Adjust button width */
+  }

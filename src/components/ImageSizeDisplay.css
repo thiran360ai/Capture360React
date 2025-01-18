@@ -1,0 +1,17 @@
+.image-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh; /* Full viewport height */
+    background-color: #f0f0f0; /* Light gray background */
+    padding: 20px;
+  }
+  
+  .image-container img {
+    max-width: 100%;
+    max-height: 100vh; /* Ensure image fits within viewport height */
+    border: 1px solid #ddd; /* Light border around the image */
+    border-radius: 8px; /* Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Shadow for better appearance */
+  }
+  

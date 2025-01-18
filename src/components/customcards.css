@@ -1,0 +1,101 @@
+/* CustomCard.css */
+
+.card-container {
+  display: flex;
+  justify-content: space-around;
+  padding: 20px;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.custom-card {
+  position: relative;
+  padding: 9px;
+  background-color: var(--bg);
+  border-radius: 35px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, 
+              rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, 
+              rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.custom-card:hover {
+  transform: scale(1.05);
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -10px, 
+              rgba(0, 0, 0, 0.3) 0px 20px 40px -15px, 
+              rgba(10, 37, 64, 0.35) 0px -1px 4px 0px inset;
+}
+
+.card {
+  background: linear-gradient(145deg, rgba(0, 123, 255, 0.6), rgba(0, 123, 255, 0.3)); /* Gradient background */
+  border-radius: 15px;
+  box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  width: 250px;
+  text-align: center;
+  backdrop-filter: blur(10px); /* Frosted glass effect */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white; /* Ensures text is readable */
+  transition: transform 0.3s ease; /* Smooth hover effect */
+}
+.card:hover {
+  transform: scale(1.05); /* Slight zoom effect on hover */
+}
+
+.card h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.card p {
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+
+.card-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-conic-gradient(var(--bg) 0.0000001%, var(--grey) 0.000104%) 60% 60%/600% 600%;
+  filter: opacity(10%) contrast(105%);
+}
+
+.card-inner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  width: 190px;
+  height: 254px;
+  background-color: var(--contrast);
+  border-radius: 30px;
+  font-size: 30px;
+  font-weight: 900;
+  color: #c7c4c4;
+  text-align: center;
+  font-family: monospace;
+}
+
+.fetch-button,
+.create-button {
+  margin-top: 10px;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  background-color: #00509e; /* Default button color */
+  color: white; /* Button text color */
+  border: none; /* Remove default button border */
+  padding: 10px 20px; /* Padding for button */
+  border-radius: 5px; /* Rounded corners for button */
+  cursor: pointer; /* Change cursor on hover */
+}
+
+.fetch-button:hover,
+.create-button:hover {
+  background-color: #00509e; /* Change to a lighter shade on hover */
+  transform: translateY(-2px);
+}
+
+.create-button {
+  margin-top: 10px;
+}

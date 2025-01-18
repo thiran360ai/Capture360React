@@ -1,0 +1,104 @@
+.App {
+  font-family: 'Roboto', sans-serif;
+  background-color: white;
+  color: #333;
+  min-height: 100vh;
+  display: flex;
+  padding: 20px;
+  flex-direction: column;
+}
+
+.main-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+.content {
+  flex-grow: 1;
+  padding: 20px;
+  margin-left: 240px; /* When sidebar is open */
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar-closed .content {
+  margin-left: 0; /* When sidebar is hidden */
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.right-side {
+  display: flex;
+  align-items: center;
+}
+
+.search-bar {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+  margin-right: 10px;
+}
+
+.profile {
+  padding: 8px 16px;
+  border-radius: 5px;
+  background-color: #007bff;
+  color: white;
+  cursor: pointer;
+}
+
+.card-container {
+  display: flex;
+  gap: 20px;
+  justify-content: space-around;
+  padding: 20px;
+  flex-wrap: wrap;
+}
+
+.sidebar-open .card-container {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.sidebar-closed .card-container {
+  grid-template-columns: 1fr; /* Adjust the cards to take full width when sidebar is closed */
+}
+
+/* Media query for responsive adjustments */
+@media (max-width: 600px) {
+  .content {
+    padding: 10px;
+    margin-left: 0; /* Adjust for smaller screens */
+  }
+
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search-bar {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+
+  .card-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .button-container {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+  }
+}

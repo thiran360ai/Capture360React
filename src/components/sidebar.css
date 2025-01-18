@@ -1,0 +1,38 @@
+.sidebar-paper {
+  background-color: #f8f9fa; /* Light theme background color */
+  width: 250px; /* Width of the sidebar */
+  position: fixed; /* Make sidebar sticky */
+  height: 100%; /* Full height */
+}
+
+.sidebar-list {
+  padding: 0;
+}
+
+.sidebar-list-item {
+  padding: 15px 20px;
+  transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effects */
+  color: rgb(46, 189, 194); /* Initial text color */
+}
+
+.sidebar-list-item:hover {
+  background-color: hwb(209 4% 9% / 0.929); /* Hover background color */
+  color: #007bff; /* Hover font color */
+}
+
+.sidebar-list-item a {
+  text-decoration: none; /* Remove underline from links */
+  color: inherit; /* Ensure link color matches text color */
+}
+
+.sidebar-list-item a:hover {
+  color: #29a1ac; /* Link text color on hover */
+}
+
+.sidebar-list-item-icon {
+  color: inherit; /* Ensure icon color matches the text color */
+}
+
+.sidebar-list-item:hover .sidebar-list-item-icon {
+  color: #007bff; /* Hover icon color */
+}
