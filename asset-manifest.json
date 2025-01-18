@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/Capture360React/static/css/main.426989da.css",
+    "main.js": "/Capture360React/static/js/main.15d38530.js",
+    "static/js/425.bdd70d44.chunk.js": "/Capture360React/static/js/425.bdd70d44.chunk.js",
+    "static/media/b2.jfif": "/Capture360React/static/media/b2.81badd50b5427f5a580f.jfif",
+    "static/media/arrow-icon-1182.png": "/Capture360React/static/media/arrow-icon-1182.3ba2063303e9987506c9.png",
+    "index.html": "/Capture360React/index.html",
+    "main.426989da.css.map": "/Capture360React/static/css/main.426989da.css.map",
+    "main.15d38530.js.map": "/Capture360React/static/js/main.15d38530.js.map",
+    "425.bdd70d44.chunk.js.map": "/Capture360React/static/js/425.bdd70d44.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.426989da.css",
+    "static/js/main.15d38530.js"
+  ]
+}
