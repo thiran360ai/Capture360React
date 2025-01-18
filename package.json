@@ -2,7 +2,7 @@
   "name": "admin-app",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://thiran360ai.github.io/webCapture360",
+  "homepage": "https://thiran360ai.github.io/Capture360React",
   "dependencies": {
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
