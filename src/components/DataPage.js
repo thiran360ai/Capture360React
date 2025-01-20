@@ -27,7 +27,7 @@ const DataPage = ({ createUser } = false) => {
           const response = await fetch(apiEndpoint, {
             headers: {
               Accept: "application/json",
-              "ngrok-skip-browser-warning": "98547",
+              
             },
           });
           const jsonData = await response.json();
@@ -51,7 +51,7 @@ const DataPage = ({ createUser } = false) => {
       const response = await fetch(viewUrl, {
         headers: {
           Accept: "application/json",
-          "ngrok-skip-browser-warning": "98547",
+          
         },
       });
       if (!response.ok) {

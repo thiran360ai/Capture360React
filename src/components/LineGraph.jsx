@@ -26,7 +26,7 @@ const LineGraph = ({ setCurrentIndexLeft, setCurrentIndexRight, maxFrames, id })
           {
             headers: {
               Accept: "application/json",
-              "ngrok-skip-browser-warning": "98547",
+              
             },
           }
         );

@@ -73,7 +73,7 @@ const ImageGalleryComponent = () => {
         {
           headers: {
             Accept: "application/json",
-            "ngrok-skip-browser-warning": "98547",
+            
           },
         }
       );
@@ -164,7 +164,7 @@ const ImageGalleryComponent = () => {
         {
           headers: {
             Accept: "application/json",
-            "ngrok-skip-browser-warning": "98547",
+            
           },
         }
       );
@@ -453,7 +453,7 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, followImageUrl }
         const response = await fetch(imageUrl, {
           headers: {
             Accept: "application/json",
-            "ngrok-skip-browser-warning": "98547",
+            
           },
         });
         if (!response.ok) {

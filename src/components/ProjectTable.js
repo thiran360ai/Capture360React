@@ -24,7 +24,7 @@ const ProjectTable = () => {
           {
             headers: {
               Accept: "application/json",
-              "ngrok-skip-browser-warning": "98547",
+              
             },
           }
         );

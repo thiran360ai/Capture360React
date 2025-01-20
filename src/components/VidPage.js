@@ -14,7 +14,7 @@ const VidPage = () => {
           {
             headers: {
               Accept: "application/json",
-              "ngrok-skip-browser-warning": "98547",
+              
             },
           }
         );

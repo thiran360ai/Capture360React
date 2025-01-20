@@ -49,7 +49,7 @@ const App = () => {
           {
             headers: {
               Accept: "application/json",
-              "ngrok-skip-browser-warning": "98547",
+              
             },
           }
         );
@@ -68,7 +68,7 @@ const App = () => {
           {
             headers: {
               Accept: "application/json",
-              "ngrok-skip-browser-warning": "98547",
+              
             },
           }
         );

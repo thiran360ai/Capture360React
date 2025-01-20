@@ -22,7 +22,7 @@ const LoginPage = ({ onLoginSuccess }) => {
         {
           headers: {
             Accept: "application/json",
-            "ngrok-skip-browser-warning": "98547",
+            
           },
         }
       );

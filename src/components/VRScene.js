@@ -11,7 +11,7 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection }) => {
         const response = await fetch(imageUrl, {
           headers: {
             Accept: "application/json",
-            "ngrok-skip-browser-warning": "98547",
+            
           },
         });
         if (!response.ok) {
