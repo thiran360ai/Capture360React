@@ -5,7 +5,7 @@ module.exports = function(app) {
   app.use(
     '/api',
     createProxyMiddleware({
-      target: 'https://6027-157-49-99-219.http://59.97.51.97:8081-free.app',
+      target: 'https://6027-157-49-99-219.https://api.capture360.ai-free.app',
       changeOrigin: true,
       pathRewrite: {
         '^/api': '', // Remove /api prefix when forwarding to target

@@ -57,7 +57,7 @@ const PlanDetailsPage = () => {
   };
 
   const renderImage = (imageUrl) => {
-    const fullImageUrl = `http://59.97.51.97:8081/${imageUrl}`;
+    const fullImageUrl = `https://api.capture360.ai/${imageUrl}`;
     return (
       <img
         src={fullImageUrl}

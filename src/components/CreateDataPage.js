@@ -39,7 +39,7 @@ const CreateDataPage = ({ onClose }) => {
 
     try {
       const response = await fetch(
-        "http://59.97.51.97:8081/building/create_project_list/",
+        "https://api.capture360.ai/building/create_project_list/",
         {
           method: "POST",
           body: formData,

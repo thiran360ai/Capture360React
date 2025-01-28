@@ -47,7 +47,7 @@ const DataPage = ({ createUser } = false) => {
     }
 
     try {
-      const viewUrl = `http://59.97.51.97:8081/building/plans/project/${row.project}/`;
+      const viewUrl = `https://api.capture360.ai/building/plans/project/${row.project}/`;
       const response = await fetch(viewUrl, {
         headers: {
           Accept: "application/json",
@@ -67,7 +67,7 @@ const DataPage = ({ createUser } = false) => {
   };
 
   const renderImage = (imageUrl, name) => {
-    const url = `http://59.97.51.97:8081/${imageUrl}`;
+    const url = `https://api.capture360.ai/${imageUrl}`;
     return (
       <img
         src={url}

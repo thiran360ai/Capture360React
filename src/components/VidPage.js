@@ -10,7 +10,7 @@ const VidPage = () => {
     const fetchVideoDetails = async () => {
       try {
         const response = await fetch(
-          "http://59.97.51.97:8081/building/api/video/details/",
+          "https://api.capture360.ai/building/api/video/details/",
           {
             headers: {
               Accept: "application/json",

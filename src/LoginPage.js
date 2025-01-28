@@ -14,7 +14,7 @@ const LoginPage = ({ onLoginSuccess }) => {
     setSuccess("");
     try {
       const response = await axios.post(
-        "http://59.97.51.97:8081/building/login/",
+        "https://api.capture360.ai/building/login/",
         {
           username,
           password,

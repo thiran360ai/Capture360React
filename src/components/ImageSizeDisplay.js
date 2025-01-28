@@ -16,7 +16,7 @@ const ImageGalleryComponent = () => {
     const fetchImages = async () => {
       try {
         const response = await fetch(
-          "http://59.97.51.97:8081/building/video/2/frames/",
+          "https://api.capture360.ai/building/video/2/frames/",
           {
             headers: {
               Accept: "application/json",
@@ -107,7 +107,7 @@ const ImageGalleryComponent = () => {
   };
 
   const renderImage = (imageObj, name, index) => {
-    const url = `http://59.97.51.97:8081/${imageObj.url}`;
+    const url = `https://api.capture360.ai/${imageObj.url}`;
     console.log("Constructed Image URL:", url);
     return (
       <div style={{ position: "relative" }}>

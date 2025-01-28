@@ -20,7 +20,7 @@ const ProjectTable = () => {
     const fetchProjectData = async () => {
       try {
         const response = await fetch(
-          "http://59.97.51.97:8081/building/projectlist/",
+          "https://api.capture360.ai/building/projectlist/",
           {
             headers: {
               Accept: "application/json",
@@ -117,7 +117,7 @@ const ProjectTable = () => {
             <CardMedia
               component="img"
               height="180"
-              image={`http://59.97.51.97:8081/${project.image}`}
+              image={`https://api.capture360.ai/${project.image}`}
               alt={project.project}
               sx={{
                 borderTopLeftRadius: "16px",
@@ -127,7 +127,7 @@ const ProjectTable = () => {
               onClick={() =>
                 navigate("/image-view", {
                   state: {
-                    imageUrl: `http://59.97.51.97:8081/${project.image}`,
+                    imageUrl: `https://api.capture360.ai/${project.image}`,
                     name: project.project,
                   },
                 })

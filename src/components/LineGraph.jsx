@@ -22,7 +22,7 @@ const LineGraph = ({ setCurrentIndexLeft, setCurrentIndexRight, maxFrames, id })
       setLoading(true);
       try {
         const response = await fetch(
-          `http://59.97.51.97:8081/building/getFloorPlan/${id}/`,
+          `https://api.capture360.ai/building/getFloorPlan/${id}/`,
           {
             headers: {
               Accept: "application/json",

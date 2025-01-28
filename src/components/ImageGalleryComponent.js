@@ -69,7 +69,7 @@ const ImageGalleryComponent = () => {
       }
 
       const response = await fetch(
-        `http://59.97.51.97:8081/building/api/video-frames/plan/${id}/video/${frameId}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${id}/video/${frameId}/`,
         {
           headers: {
             Accept: "application/json",
@@ -91,11 +91,11 @@ const ImageGalleryComponent = () => {
         if (isRight) {
           setImagesRight(validImages);
           setCurrentIndexRight(0);
-          setImageUrlRight(validImages[0]?.image ? `http://59.97.51.97:8081/${validImages[0].image}` : "");
+          setImageUrlRight(validImages[0]?.image ? `https://api.capture360.ai/${validImages[0].image}` : "");
         } else {
           setImagesLeft(validImages);
           setCurrentIndexLeft(0);
-          setImageUrlLeft(validImages[0]?.image ? `http://59.97.51.97:8081/${validImages[0].image}` : "");
+          setImageUrlLeft(validImages[0]?.image ? `https://api.capture360.ai/${validImages[0].image}` : "");
         }
       } else {
         console.warn("Unexpected API response structure:", imageData);
@@ -160,7 +160,7 @@ const ImageGalleryComponent = () => {
   const fetchDates = async (id) => {
     try {
       const response = await fetch(
-        `http://59.97.51.97:8081/building/api/video-frames/plan/${id}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${id}/`,
         {
           headers: {
             Accept: "application/json",
@@ -281,7 +281,7 @@ const ImageGalleryComponent = () => {
       );
     }
 
-    const url = `http://59.97.51.97:8081/${imageObj.image}`;
+    const url = `https://api.capture360.ai/${imageObj.image}`;
     const timestamp = imageObj.timestamp || "Unknown Date";
 
     return (

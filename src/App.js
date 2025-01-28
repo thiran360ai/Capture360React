@@ -45,7 +45,7 @@ const App = () => {
     const fetchProjectData = async () => {
       try {
         const response = await fetch(
-          "http://59.97.51.97:8081/building/projectlist/",
+          "https://api.capture360.ai/building/projectlist/",
           {
             headers: {
               Accept: "application/json",
@@ -64,7 +64,7 @@ const App = () => {
     const fetchEmployeeData = async () => {
       try {
         const response = await fetch(
-          "http://59.97.51.97:8081/building/create_user/",
+          "https://api.capture360.ai/building/create_user/",
           {
             headers: {
               Accept: "application/json",
