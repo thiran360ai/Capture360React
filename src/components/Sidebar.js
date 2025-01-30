@@ -75,7 +75,7 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
     {
       text: 'Project Manager',
       icon: <ProjectIcon />,
-      link: '/project-manager',
+      link: '/ProjectTab',
       apiEndpoint: 'https://api.capture360.ai/building/projectlist/',
     },
     {

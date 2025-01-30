@@ -1,0 +1,106 @@
+/* ProjectTab.css */
+
+/* Ensure that the container takes full width */
+.container {
+    padding: 20px;
+  }
+  
+  /* Flex layout for the project cards */
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+  }
+  
+  /* Card styles */
+  .card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .card:hover {
+    transform: translateY(-10px);
+  }
+  
+  /* Card Body */
+  .card-body {
+    padding: 20px;
+  }
+  
+  .card-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #333;
+  }
+  
+  .card-subtitle {
+    font-size: 1rem;
+    color: #777;
+  }
+  
+  .card-text {
+    font-size: 0.9rem;
+    color: #555;
+  }
+  
+  button {
+    font-size: 1rem;
+    padding: 10px 20px;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Column break points */
+  @media (max-width: 1200px) {
+    .col-lg-4 {
+      flex: 0 0 45%;
+      max-width: 45%;
+    }
+  }
+  
+  @media (max-width: 992px) {
+    .col-md-6 {
+      flex: 0 0 48%;
+      max-width: 48%;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .col-sm-12 {
+      flex: 0 0 100%;
+      max-width: 100%;
+    }
+  }
+  
+  @media (max-width: 576px) {
+    .card {
+      margin-bottom: 15px;
+    }
+  
+    .card-title {
+      font-size: 1.3rem;
+    }
+  
+    .card-subtitle {
+      font-size: 0.9rem;
+    }
+  
+    .card-text {
+      font-size: 0.8rem;
+    }
+  
+    button {
+      font-size: 0.9rem;
+      padding: 8px 16px;
+    }
+  }
+  

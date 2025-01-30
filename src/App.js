@@ -16,6 +16,7 @@ import RegisterForm from "./components/RegisterForm"; // Import RegisterForm
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import "./App.css";
+import ProjectTab from "./components/ProjectTab";
 
 const theme = createTheme({
   palette: {
@@ -118,6 +119,7 @@ const App = () => {
                 <Route path="/plan-detail-view" element={<PlanDetailViewPage />} />
                 <Route path="/create" element={<CreateDataPage />} />
                 <Route path="/project-manager" element={<DataPage />} />
+                <Route path="/ProjectTab/:id" element={<ProjectTab />} />
                 <Route path="/create-manager" element={<DataPage createUser={true} />} />
                 <Route path="/image-gallery" element={<ImageGalleryComponent />} />
                 <Route path="/image-view" element={<ImageViewPage />} />
