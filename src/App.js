@@ -1,26 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import 'bootstrap/dist/css/bootstrap.min.css';
 import Sidebar from "./components/Sidebar";
 import CustomCard from "./components/CustomCard";
 import LoginPage from "./components/LoginPage";
 import DataPage from "./components/DataPage";
 import PlanDetailsPage from "./components/PlanDetailsPage";
 import PlanDetailViewPage from "./components/PlanDetailViewPage";
-import CreateDataPage from "./components/CreateDataPage";
+import CreateDataPage from "./components/CreateDataPage"; // Ensure correct import
 import ImageGalleryComponent from "./components/ImageGalleryComponent";
 import ImageViewPage from "./components/ImageViewPage";
 import CreatePlanDataPage from "./components/CreatePlanDataPage";
 import VidPage from "./components/VidPage";
 import ProjectTable from "./components/ProjectTable";
-import RegisterForm from "./components/RegisterForm"; // Import RegisterForm
+import RegisterForm from "./components/RegisterForm";
+import ProjectTab from "./components/ProjectTab"; // Ensure correct import
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import "./App.css";
-import ProjectTab from "./components/ProjectTab";
 
 const theme = createTheme({
   palette: {
-    mode: 'light', // or 'dark'
+    mode: 'light',
   },
 });
 
@@ -32,7 +33,7 @@ const App = () => {
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [liveEmployees, setLiveEmployees] = useState(0);
 
-  const navigate = useNavigate(); // Initialize navigate hook
+  const navigate = useNavigate();
 
   const toggleSidebar = () => {
     setIsSidebarOpen(prevState => !prevState);
@@ -45,15 +46,9 @@ const App = () => {
   useEffect(() => {
     const fetchProjectData = async () => {
       try {
-        const response = await fetch(
-          "https://api.capture360.ai/building/projectlist/",
-          {
-            headers: {
-              Accept: "application/json",
-              
-            },
-          }
-        );
+        const response = await fetch("https://api.capture360.ai/building/projectlist/", {
+          headers: { Accept: "application/json" },
+        });
         const data = await response.json();
         setTotalProjects(data.length);
         setLiveProjects(data.length);
@@ -64,15 +59,9 @@ const App = () => {
 
     const fetchEmployeeData = async () => {
       try {
-        const response = await fetch(
-          "https://api.capture360.ai/building/create_user/",
-          {
-            headers: {
-              Accept: "application/json",
-              
-            },
-          }
-        );
+        const response = await fetch("https://api.capture360.ai/building/create_user/", {
+          headers: { Accept: "application/json" },
+        });
         const data = await response.json();
         setTotalEmployees(data.length);
         setLiveEmployees(data.length);
@@ -99,9 +88,6 @@ const App = () => {
                   <div className="profile">Profile</div>
                 </div>
               </div>
-              <div className="button-container">
-                {/* Additional buttons */}
-              </div>
               <Routes>
                 <Route path="/" element={
                   <>
@@ -115,17 +101,19 @@ const App = () => {
                   </>
                 } />
                 <Route path="/data" element={<DataPage />} />
+                <Route path="/Sidebar" element={<Sidebar />} />
                 <Route path="/plan-details" element={<PlanDetailsPage />} />
                 <Route path="/plan-detail-view" element={<PlanDetailViewPage />} />
-                <Route path="/create" element={<CreateDataPage />} />
+                <Route path="/CreateDataPage" element={<CreateDataPage />} /> {/* Updated route path */}
                 <Route path="/project-manager" element={<DataPage />} />
-                <Route path="/ProjectTab/:id" element={<ProjectTab />} />
+                <Route path="/ProjectTab" element={<ProjectTab />} /> {/* Updated route path */}
+                <Route path="/ProjectTable" element={<ProjectTable />} /> {/* Updated route path */}
                 <Route path="/create-manager" element={<DataPage createUser={true} />} />
                 <Route path="/image-gallery" element={<ImageGalleryComponent />} />
                 <Route path="/image-view" element={<ImageViewPage />} />
                 <Route path="/create-plan" element={<CreatePlanDataPage />} />
                 <Route path="/vid" element={<VidPage />} />
-                <Route path="/register" element={<RegisterForm />} /> {/* Add route for RegisterForm */}
+                <Route path="/register" element={<RegisterForm />} />
               </Routes>
             </div>
           </>

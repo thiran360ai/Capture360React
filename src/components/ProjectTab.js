@@ -1,68 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Button, Card, Container, Row, Col } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import './ProjectTab.css'; // Import the CSS for styling
+import React, { useEffect, useState } from "react";
+import { Table, Button, Container, Spinner } from "react-bootstrap";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import "./ProjectTab.css"; // Import custom CSS
 
 const ProjectTab = () => {
-  const [projects, setProjects] = useState([]); // State to store project data
-  const [loading, setLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null); // Error state
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
-  const navigate = useNavigate(); // To navigate to other pages
-
-  // Fetching data from API
   useEffect(() => {
-    axios
-      .get('https://api.capture360.ai/building/project/') // API URL
-      .then((response) => {
-        setProjects(response.data); // Set the fetched data into state
-        setLoading(false); // Set loading to false after data is fetched
-      })
-      .catch((err) => {
-        setError('Failed to fetch data'); // Handle error
-        setLoading(false); // Set loading to false if error occurs
-      });
-  }, []); // Empty array ensures the useEffect runs only once when the component mounts
+    const fetchProjects = async () => {
+      try {
+        const response = await axios.get("https://api.capture360.ai/building/project/");
+        setProjects(response.data);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
 
-  // Navigate to CreateDataPage.js when 'View Details' is clicked
-  const handleViewDetails = (id) => {
-    navigate(`/createdatapage/${id}`); // Navigate to CreateDataPage with project ID
+  const handleProjectClick = () => {
+    navigate(`/project-manager`);
   };
 
-  // Handle loading state
-  if (loading) {
-    return <div>Loading...</div>; // Display loading message
-  }
-
-  // Handle error state
-  if (error) {
-    return <div>{error}</div>; // Display error message
-  }
-
   return (
-    <Container>
-      <Row>
-        {projects.map((project) => (
-          <Col key={project.id} sm={12} md={6} lg={4}> {/* Responsive layout */}
-            <Card className="mb-4">
-              <Card.Body>
-                <Card.Title>{project.project_name}</Card.Title> {/* Display project name */}
-                <Card.Subtitle className="mb-2 text-muted">{project.company_name}</Card.Subtitle> {/* Display company name */}
-                <Card.Text>
-                  Location: {project.location} {/* Display location */}
-                </Card.Text>
-                <Button
-                  variant="primary"
-                  onClick={() => handleViewDetails(project.id)} // Navigate to details page with ID
-                >
-                  View Details
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+    <Container className="project-container">
+      <h2 className="project-title">Project List</h2>
+
+      {loading ? (
+        <div className="loading-container">
+          <Spinner animation="border" variant="primary" />
+        </div>
+      ) : (
+        <div className="table-wrapper">
+          <Table striped hover responsive className="custom-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Project Name</th>
+                <th>Company Name</th>
+                <th>Location</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {projects.length > 0 ? (
+                projects.map((project) => (
+                  <tr key={project.id}>
+                    <td>{project.id}</td>
+                    <td>{project.project_name}</td>
+                    <td>{project.company_name}</td>
+                    <td>{project.location}</td>
+                    <td>
+                      <Button
+                        variant="primary"
+                        className="view-btn"
+                        onClick={() => handleProjectClick(project.id)}
+                      >
+                        View
+                      </Button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="5" className="text-center">
+                    No Data Available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </Table>
+        </div>
+      )}
     </Container>
   );
 };

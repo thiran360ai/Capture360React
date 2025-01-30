@@ -1,106 +1,65 @@
-/* ProjectTab.css */
+/* Glassmorphism Effect */
+.project-container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
 
-/* Ensure that the container takes full width */
-.container {
-    padding: 20px;
-  }
-  
-  /* Flex layout for the project cards */
-  .row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-  }
-  
-  /* Card styles */
-  .card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    transition: transform 0.3s ease-in-out;
-  }
-  
-  .card:hover {
-    transform: translateY(-10px);
-  }
-  
-  /* Card Body */
-  .card-body {
-    padding: 20px;
-  }
-  
-  .card-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #333;
-  }
-  
-  .card-subtitle {
-    font-size: 1rem;
-    color: #777;
-  }
-  
-  .card-text {
-    font-size: 0.9rem;
-    color: #555;
-  }
-  
-  button {
-    font-size: 1rem;
-    padding: 10px 20px;
-    border: none;
-    background-color: #007bff;
-    color: white;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
-  }
-  
-  button:hover {
-    background-color: #0056b3;
-  }
-  
-  /* Column break points */
-  @media (max-width: 1200px) {
-    .col-lg-4 {
-      flex: 0 0 45%;
-      max-width: 45%;
-    }
-  }
-  
-  @media (max-width: 992px) {
-    .col-md-6 {
-      flex: 0 0 48%;
-      max-width: 48%;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .col-sm-12 {
-      flex: 0 0 100%;
-      max-width: 100%;
-    }
-  }
-  
-  @media (max-width: 576px) {
-    .card {
-      margin-bottom: 15px;
-    }
-  
-    .card-title {
-      font-size: 1.3rem;
-    }
-  
-    .card-subtitle {
-      font-size: 0.9rem;
-    }
-  
-    .card-text {
-      font-size: 0.8rem;
-    }
-  
-    button {
-      font-size: 0.9rem;
-      padding: 8px 16px;
-    }
-  }
-  
+/* Title Styling */
+.project-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight:500;
+  margin-bottom: 20px;
+  color: #fff;
+}
+
+/* Loading Spinner */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+/* Table Styling */
+.custom-table {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+/* Table Header */
+.custom-table thead {
+  background: #007bff;
+  color: white;
+  text-transform: uppercase;
+}
+
+/* Table Rows */
+.custom-table tbody tr {
+  transition: 0.3s ease-in-out;
+}
+
+.custom-table tbody tr:hover {
+  background: rgba(0, 123, 255, 0.1);
+  transform: scale(1.02);
+}
+
+/* View Button */
+.view-btn {
+  background: #007bff;
+  border: none;
+  transition: 0.3s;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.view-btn:hover {
+  background: #0056b3;
+  transform: scale(1.1);
+}
