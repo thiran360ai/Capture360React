@@ -23,6 +23,7 @@ const theme = createTheme({
   },
 });
 
+
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
