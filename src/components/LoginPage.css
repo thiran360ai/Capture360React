@@ -2,14 +2,15 @@ body {
   font-family: 'Arial', sans-serif;
   margin: 0;  
 }
-.login-page{
-  position: absolute; 
+.login-page {
+  position: fixed; /* Instead of absolute */
   top: 0;
-   left: 0;
+  left: 0;
   width: 100%;
-  height: 100%; 
+  height: 100%;
   background: rgba(31, 30, 30, 0.1);
 }
+
 
 .login-header {
   /* background-color: #252323; */
@@ -47,23 +48,30 @@ body {
 }
 
 .login-content {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: 40px 20px;
-  background-image: url('../b2.jfif');
-  background-size: cover; /* Adjust to cover the entire div */
-  background-position: center;
-  background-color: rgba(61, 61, 61, 0);
-  min-height: calc(90vh - 55px); /* Header height subtracted */
+  min-height: calc(90vh - 55px);
   height: 92%;
+  overflow: hidden; /* Prevents overflow issues */
+}
+
+
+.bg-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -1; /* Ensures the video stays behind the login content */
 }
 
 .login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex: 1;
+  position: relative;
+  z-index: 1; /* Ensures the login form appears above the video */
 }
 
 .login-card {

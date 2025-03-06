@@ -12,6 +12,7 @@ import CreateDataPage from "./CreateDataPage";
 import { Box, Card, CardContent } from "@mui/material";
 import "./DataPage.css";
 import RegisterForm from "./RegisterForm";
+import { Center } from "@react-three/drei";
 
 const DataPage = ({ createUser } = false) => {
   const location = useLocation();
@@ -100,11 +101,12 @@ const DataPage = ({ createUser } = false) => {
         width: "1100px",
         height: "650px",
         boxShadow: "0px 8px 20px rgba(0, 0, 0, 0.1)",
-        paddingTop: "20px",
+        marginTop:"20px",
         borderRadius: "12px",
         backgroundColor: "#ffffff",
         overflow: "auto",
         transition: "all 0.3s ease",
+        marginLeft:"150px",
       }}
     >
       <CardContent>

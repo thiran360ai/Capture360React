@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
+import { Card, CardContent, Typography, Grid } from "@mui/material";
+import { Work, PlayCircleFilled, People, Person } from "@mui/icons-material";
 import Sidebar from "./components/Sidebar";
 import CustomCard from "./components/CustomCard";
 import LoginPage from "./components/LoginPage";
@@ -12,14 +14,14 @@ import ImageViewPage from "./components/ImageViewPage";
 import CreatePlanDataPage from "./components/CreatePlanDataPage";
 import VidPage from "./components/VidPage";
 import ProjectTable from "./components/ProjectTable";
-import RegisterForm from "./components/RegisterForm"; // Import RegisterForm
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import RegisterForm from "./components/RegisterForm";
+import { ThemeProvider, createTheme } from "@mui/material/styles";
+import CssBaseline from "@mui/material/CssBaseline";
 import "./App.css";
 
 const theme = createTheme({
   palette: {
-    mode: 'light', // or 'dark'
+    mode: "light",
   },
 });
 
@@ -31,10 +33,10 @@ const App = () => {
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [liveEmployees, setLiveEmployees] = useState(0);
 
-  const navigate = useNavigate(); // Initialize navigate hook
+  const navigate = useNavigate();
 
   const toggleSidebar = () => {
-    setIsSidebarOpen(prevState => !prevState);
+    setIsSidebarOpen((prevState) => !prevState);
   };
 
   const handleLoginSuccess = () => {
@@ -46,12 +48,7 @@ const App = () => {
       try {
         const response = await fetch(
           "https://api.capture360.ai/building/projectlist/",
-          {
-            headers: {
-              Accept: "application/json",
-              
-            },
-          }
+          { headers: { Accept: "application/json" } }
         );
         const data = await response.json();
         setTotalProjects(data.length);
@@ -65,12 +62,7 @@ const App = () => {
       try {
         const response = await fetch(
           "https://api.capture360.ai/building/create_user/",
-          {
-            headers: {
-              Accept: "application/json",
-              
-            },
-          }
+          { headers: { Accept: "application/json" } }
         );
         const data = await response.json();
         setTotalEmployees(data.length);
@@ -87,43 +79,112 @@ const App = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div className={`App main-container ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+      <div
+        className={`App main-container ${
+          isSidebarOpen ? "sidebar-open" : "sidebar-closed"
+        }`}
+      >
         {isLoggedIn ? (
           <>
             <Sidebar isOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
             <div className="content">
               <div className="top-bar">
                 <div className="right-side">
-                  <input type="text" className="search-bar" placeholder="Search..." />
+                  <input
+                    type="text"
+                    className="search-bar"
+                    placeholder="Search..."
+                  />
                   <div className="profile">Profile</div>
                 </div>
               </div>
-              <div className="button-container">
-                {/* Additional buttons */}
-              </div>
               <Routes>
-                <Route path="/" element={
-                  <>
-                    <div className="card-container">
-                      <CustomCard title="Total Project" count={totalProjects} />
-                      <CustomCard title="Live Project" count={liveProjects} />
-                      <CustomCard title="Total User" count={totalEmployees} />
-                      <CustomCard title="Live User" count={liveEmployees} />
-                    </div>
-                    <ProjectTable />
-                  </>
-                } />
+                <Route
+                  path="/"
+                  element={
+                    <>
+                      <Grid container spacing={0.5} sx={{ mt: 2, px: 0 }}>
+                        {[
+                          {
+                            title: "Total Project",
+                            count: totalProjects,
+                            icon: <Work fontSize="medium" />,
+                          },
+                          {
+                            title: "Live Project",
+                            count: liveProjects,
+                            icon: <PlayCircleFilled fontSize="medium" />,
+                          },
+                          {
+                            title: "Total User",
+                            count: totalEmployees,
+                            icon: <People fontSize="medium" />,
+                          },
+                          {
+                            title: "Live User",
+                            count: liveEmployees,
+                            icon: <Person fontSize="medium" />,
+                          },
+                        ].map((card, index) => (
+                          <Grid item xs={12} sm={6} md={3} key={index} sx={{ px: 0,py:0}}>
+                            <Card
+                              sx={{
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                p: 0.5, // Reduced padding
+                                boxShadow: 2, // Softer shadow
+                                borderRadius: 2, // Slightly reduced border radius
+                                bgcolor: "#f8f9fa",
+                                minHeight: 150, // Reduced height
+                                maxWidth: 280, // **Reduced width**
+                                mx: "auto", // Centers the card within the Grid item
+                              }}
+                            >
+                              {card.icon}
+                              <CardContent
+                                sx={{ textAlign: "center", padding: "8px" }}
+                              >
+                                <Typography
+                                  variant="subtitle1"
+                                  fontWeight="bold"
+                                >
+                                  {card.title}
+                                </Typography>
+                                <Typography variant="h5" color="primary">
+                                  {card.count}
+                                </Typography>
+                              </CardContent>
+                            </Card>
+                          </Grid>
+                        ))}
+                      </Grid>
+
+                      <ProjectTable />
+                    </>
+                  }
+                />
                 <Route path="/data" element={<DataPage />} />
                 <Route path="/plan-details" element={<PlanDetailsPage />} />
-                <Route path="/plan-detail-view" element={<PlanDetailViewPage />} />
+                <Route
+                  path="/plan-detail-view"
+                  element={<PlanDetailViewPage />}
+                />
                 <Route path="/create" element={<CreateDataPage />} />
                 <Route path="/project-manager" element={<DataPage />} />
-                <Route path="/create-manager" element={<DataPage createUser={true} />} />
-                <Route path="/image-gallery" element={<ImageGalleryComponent />} />
+                <Route
+                  path="/create-manager"
+                  element={<DataPage createUser={true} />}
+                />
+                <Route
+                  path="/image-gallery"
+                  element={<ImageGalleryComponent />}
+                />
                 <Route path="/image-view" element={<ImageViewPage />} />
                 <Route path="/create-plan" element={<CreatePlanDataPage />} />
                 <Route path="/vid" element={<VidPage />} />
-                <Route path="/register" element={<RegisterForm />} /> {/* Add route for RegisterForm */}
+                <Route path="/register" element={<RegisterForm />} />
               </Routes>
             </div>
           </>

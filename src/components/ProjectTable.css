@@ -1,27 +1,45 @@
 /* ProjectTable.css */
 .project-table-container {
-    padding: 20px;
-  }
-  
-  .header-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-  
-  .header-container h2 {
-    margin: 0;
-  }
-  
-  .header-container .MuiButton-root {
-    /* Adjust margin if needed */
-    font-size: 0.75rem; /* Adjust font size */
-  padding: 6px 12px; /* Adjust padding */
-  }
-  
-  .create-project-button {
-    font-size: 0.75rem; /* Adjust font size */
-    padding: 2px 4px; /* Adjust padding */
-    width: 180px; /* Adjust button width */
-  }
+  padding: 24px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 12px;
+}
+
+.header-container h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.header-container .MuiButton-root {
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-transform: capitalize;
+}
+
+.create-project-button {
+  font-size: 0.85rem;
+  padding: 8px 16px;
+  width: 180px;
+  border-radius: 6px;
+  background-color: #1976d2;
+  color: #fff;
+  transition: background-color 0.3s ease-in-out;
+  border: none;
+}
+
+.create-project-button:hover {
+  background-color: #1565c0;
+}

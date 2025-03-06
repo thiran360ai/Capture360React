@@ -7,6 +7,7 @@ const LoginPage = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -44,7 +45,7 @@ const LoginPage = ({ onLoginSuccess }) => {
       <header className="login-header">
         <div className="login-header-content">
           <h1>We Build It <img src="Device---Macbook-Air.webp" style={{maxHeight: '35px' ,paddingTop: '10px'}} /></h1>
-          <nav className="login-nav"  style={{paddingRight: '22%'}}>
+          <nav className="login-nav"  style={{paddingLeft: '22%'}}>
             <a href="/">Resources</a>
             <a href="/">About Us</a>
             <a href="/">Sign Up</a>
@@ -53,6 +54,10 @@ const LoginPage = ({ onLoginSuccess }) => {
         </div>
       </header>
       <div className="login-content">
+      <video autoPlay loop muted className="bg-video">
+    <source src="/video.mp4" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
         <div className="login-container">
           <div className="login-card">
             <div className="login-form">
