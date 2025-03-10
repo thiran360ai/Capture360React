@@ -1,6 +1,10 @@
 .App {
   font-family: 'Roboto', sans-serif;
-  background-color: white;
+  background-image: url('./components/bggg.jpg'); /* Replace with your image path */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   color: #333;
   min-height: 100vh;
   display: flex;
@@ -13,73 +17,78 @@
   flex-direction: column;
   align-items: center;
   padding: 20px;
+  width: 100%;
 }
 
 .content {
   flex-grow: 1;
   padding: 20px;
-  margin-left: 240px; /* When sidebar is open */
+  margin-left: 240px; /* Sidebar open */
   transition: margin-left 0.3s ease;
+  width: 100%;
 }
 
 .sidebar-closed .content {
-  margin-left: 0; /* When sidebar is hidden */
+  margin-left: 0; /* Sidebar hidden */
 }
 
 .top-bar {
   display: flex;
-  justify-content: space-between;
-  width: 100%;
-  align-items: center;
-  padding: 10px 20px;
-  background-color: #fff;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  justify-content: center; /* Center content horizontally */
+  align-items: center; /* Align items vertically */
+  padding: 10px;
+  
+
 }
 
 .right-side {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .search-bar {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  border-radius: 5px;
+  width: 50%; /* Adjust width as needed */
+  width: 900px; /* Limit maximum width */
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
   font-size: 16px;
-  margin-right: 10px;
+  
 }
 
 .profile {
-  padding: 8px 16px;
+  padding: 8px;
   border-radius: 5px;
   background-color: #007bff;
   color: white;
   cursor: pointer;
+  margin-left: 20px;
 }
 
 .card-container {
   display: flex;
   gap: 20px;
-  justify-content: space-around;
-  padding: 20px;
+  justify-content: center;
   flex-wrap: wrap;
+  padding: 20px;
+  width: 100%;
 }
 
 .sidebar-open .card-container {
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 }
 
 .sidebar-closed .card-container {
-  grid-template-columns: 1fr; /* Adjust the cards to take full width when sidebar is closed */
+  display: grid;
+  grid-template-columns: 1fr; /* Full width when sidebar is closed */
 }
 
-/* Media query for responsive adjustments */
-@media (max-width: 600px) {
+/* Responsive Design */
+@media (max-width: 1024px) {
   .content {
-    padding: 10px;
-    margin-left: 0; /* Adjust for smaller screens */
+    margin-left: 0; /* Ensure full width on smaller screens */
   }
 
   .top-bar {
@@ -88,6 +97,32 @@
   }
 
   .search-bar {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .right-side {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .card-container {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .content {
+    padding: 10px;
+  }
+
+  .top-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .search-bar {
+    width: 100%;
     margin-right: 0;
     margin-bottom: 10px;
   }
@@ -95,7 +130,7 @@
   .card-container {
     grid-template-columns: 1fr;
   }
-  
+
   .button-container {
     display: flex;
     justify-content: center;
