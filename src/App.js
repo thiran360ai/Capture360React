@@ -25,6 +25,27 @@ const theme = createTheme({
   },
 });
 
+// Base card style
+const baseCardStyle = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  p: 0.5,
+  boxShadow: 2,
+  borderRadius: 2,
+  bgcolor: "#f8f9fa",
+  minHeight: 150,
+  maxWidth: 280,
+  mx: "auto",
+  transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  "&:hover": {
+    transform: "scale(1.05)",
+    boxShadow: 6,
+    cursor: "pointer",
+  }
+};
+
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -32,6 +53,7 @@ const App = () => {
   const [liveProjects, setLiveProjects] = useState(0);
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [liveEmployees, setLiveEmployees] = useState(0);
+  const [cardsVisible, setCardsVisible] = useState([false, false, false, false]);
 
   const navigate = useNavigate();
 
@@ -47,7 +69,7 @@ const App = () => {
     const fetchProjectData = async () => {
       try {
         const response = await fetch(
-          "https://api.capture360.ai/building/projectlist/",
+          "https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/building/projectlist/",
           { headers: { Accept: "application/json" } }
         );
         const data = await response.json();
@@ -61,7 +83,7 @@ const App = () => {
     const fetchEmployeeData = async () => {
       try {
         const response = await fetch(
-          "https://api.capture360.ai/building/create_user/",
+          "https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/building/create_user/",
           { headers: { Accept: "application/json" } }
         );
         const data = await response.json();
@@ -75,6 +97,29 @@ const App = () => {
     fetchProjectData();
     fetchEmployeeData();
   }, []);
+
+  // Animation effect for cards
+  useEffect(() => {
+    if (isLoggedIn) {
+      // Trigger animations with a delay for each card
+      const timeouts = [];
+      for (let i = 0; i < 4; i++) {
+        const timeout = setTimeout(() => {
+          setCardsVisible(prev => {
+            const newState = [...prev];
+            newState[i] = true;
+            return newState;
+          });
+        }, 200 * i); // 200ms delay between each card
+        timeouts.push(timeout);
+      }
+
+      // Cleanup function
+      return () => {
+        timeouts.forEach(clearTimeout);
+      };
+    }
+  }, [isLoggedIn, totalProjects, liveProjects, totalEmployees, liveEmployees]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -126,20 +171,13 @@ const App = () => {
                             icon: <Person fontSize="medium" />,
                           },
                         ].map((card, index) => (
-                          <Grid item xs={12} sm={6} md={3} key={index} sx={{ px: 0,py:0}}>
+                          <Grid item xs={12} sm={6} md={3} key={index} sx={{ px: 0, py: 0 }}>
                             <Card
                               sx={{
-                                display: "flex",
-                                flexDirection: "column",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                p: 0.5, // Reduced padding
-                                boxShadow: 2, // Softer shadow
-                                borderRadius: 2, // Slightly reduced border radius
-                                bgcolor: "#f8f9fa",
-                                minHeight: 150, // Reduced height
-                                maxWidth: 280, // **Reduced width**
-                                mx: "auto", // Centers the card within the Grid item
+                                ...baseCardStyle,
+                                transform: cardsVisible[index] ? "translateX(0)" : "translateX(100%)",
+                                opacity: cardsVisible[index] ? 1 : 0,
+                                transition: "transform 0.5s ease-out, opacity 0.5s ease-out, box-shadow 0.3s ease",
                               }}
                             >
                               {card.icon}

@@ -23,13 +23,13 @@ const Sidebar = ({ isOpen, toggleSidebar }) => {
       text: "Project Manager",
       icon: <ProjectIcon />, 
       link: "/project-manager",
-      apiEndpoint: "https://api.capture360.ai/building/projectlist/",
+      apiEndpoint: "https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/projectlist/",
     },
     {
       text: "Create Manager",
       icon: <CreateIcon />, 
       link: "/create-manager",
-      apiEndpoint: "https://api.capture360.ai/building/create_user/",
+      apiEndpoint: "https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/create_user/",
     },
   ];
 

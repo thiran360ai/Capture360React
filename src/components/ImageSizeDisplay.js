@@ -16,7 +16,7 @@ const ImageGalleryComponent = () => {
     const fetchImages = async () => {
       try {
         const response = await fetch(
-          "https://api.capture360.ai/building/video/2/frames/",
+          "https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/video/2/frames/",
           {
             headers: {
               Accept: "application/json",
@@ -107,7 +107,7 @@ const ImageGalleryComponent = () => {
   };
 
   const renderImage = (imageObj, name, index) => {
-    const url = `https://api.capture360.ai/${imageObj.url}`;
+    const url = `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${imageObj.url}`;
     console.log("Constructed Image URL:", url);
     return (
       <div style={{ position: "relative" }}>

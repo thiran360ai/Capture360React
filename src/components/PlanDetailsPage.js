@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -10,6 +10,7 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import { styled } from "@mui/material/styles";
+import CircularProgress from "@mui/material/CircularProgress";
 
 // Styled Components
 const StyledTableContainer = styled(Box)({
@@ -46,31 +47,101 @@ const ActionButton = styled(Button)({
   },
 });
 
+const LoadingContainer = styled(Box)({
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  height: "300px",
+});
+
 const PlanDetailsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { title, data } = location.state || {};
-  console.log("data", data)
+  const [planData, setPlanData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { title } = location.state || { title: "Plan Details" };
+  
+  const API_BASE_URL = "https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app";
+
+  useEffect(() => {
+    fetchPlanDetails();
+  }, []);
+
+  const fetchPlanDetails = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/building/plan_details/`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      setPlanData(data);
+      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching plan details:", err);
+      setError("Failed to load plan details. Please try again later.");
+      setLoading(false);
+    }
+  };
 
   const handleViewPlan = (id) => {
     navigate("/image-gallery", { state: { id } });
   };
 
   const renderImage = (imageUrl) => {
-    const fullImageUrl = `https://api.capture360.ai/${imageUrl}`;
+    // Check if the imageUrl already starts with http or https
+    const fullImageUrl = imageUrl.startsWith('http') 
+      ? imageUrl 
+      : `${API_BASE_URL}${imageUrl}`;
+      
     return (
-      <img
-        src={fullImageUrl}
-        alt="Plan"
-        style={{
-          width: "100px",
-          height: "auto",
-          borderRadius: "8px",
-          objectFit: "cover",
-        }}
-      />
+      <Box sx={{ position: 'relative', width: '100px', height: '100px' }}>
+        <img
+          src={fullImageUrl}
+          alt="Plan"
+          style={{
+            width: "100px",
+            height: "100px",
+            borderRadius: "8px",
+            objectFit: "cover",
+          }}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "/placeholder-image.png"; // Replace with your placeholder image
+            e.target.style.opacity = "0.5";
+          }}
+        />
+      </Box>
     );
   };
+
+  if (loading) {
+    return (
+      <LoadingContainer>
+        <CircularProgress size={60} thickness={4} style={{ color: "#00509e" }} />
+      </LoadingContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box style={{ padding: "32px", textAlign: "center" }}>
+        <Typography variant="h6" color="error" gutterBottom>
+          {error}
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={fetchPlanDetails}
+          style={{ marginTop: "16px" }}
+        >
+          Retry
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box style={{ backgroundColor: "#f4f7fa", minHeight: "100vh", padding: "16px" }}>
@@ -84,25 +155,24 @@ const PlanDetailsPage = () => {
           marginBottom: "16px",
         }}
       >
-        {title || "Plan Details for Project 1"}
+        {title || "Plan Details for Project"}
       </Typography>
 
-      {data ? (
+      {planData && planData.length > 0 ? (
         <Paper elevation={3} style={{ padding: "16px", maxWidth: "100%" }}>
           <StyledTableContainer>
             <StyledTable stickyHeader>
               <TableHead>
                 <TableRow>
-                  {Object.keys(data[0]).map((key, index) => (
+                  {Object.keys(planData[0]).map((key, index) => (
                     <HeaderCell key={index}>{key}</HeaderCell>
                   ))}
                   <HeaderCell>Action</HeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.map((row, index) => (
+                {planData.map((row, index) => (
                   <TableRow key={index}>
-                    
                     {Object.entries(row).map(([key, value], idx) => (
                       <TableCell
                         key={idx}
@@ -112,13 +182,14 @@ const PlanDetailsPage = () => {
                           padding: "12px",
                         }}
                       >
-                        {typeof value === "string" && value.includes("/media/")
+                        {typeof value === "string" && 
+                         (value.includes("/media/") || value.includes("/static/")) 
                           ? renderImage(value)
                           : value}
                       </TableCell>
                     ))}
                     <TableCell align="center">
-                      <ActionButton onClick={() => handleViewPlan(row.id)}>
+                      <ActionButton onClick={() => handleViewPlan(row.id || index)}>
                         View 360°
                       </ActionButton>
                     </TableCell>

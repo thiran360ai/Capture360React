@@ -9,7 +9,7 @@ const PlanDetailViewPage = () => {
   const { title, data } = location.state || {};
 
   const renderImage = (imageUrl, name) => {
-    const fullImageUrl = `https://api.capture360.ai/${imageUrl}`;
+    const fullImageUrl = `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${imageUrl}`;
     return (
       <div key={name}>
         <img

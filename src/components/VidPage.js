@@ -10,7 +10,7 @@ const VidPage = () => {
     const fetchVideoDetails = async () => {
       try {
         const response = await fetch(
-          "https://api.capture360.ai/building/api/video/details/",
+          "https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/building/api/video/details/",
           {
             headers: {
               Accept: "application/json",

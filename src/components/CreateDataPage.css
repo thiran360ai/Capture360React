@@ -1,3 +1,105 @@
+.create-data-card {
+  opacity: 0;
+  transform: translateX(100%);
+  transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+}
+
+.form-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.create-data-title {
+  animation: fadeIn 0.8s ease-out;
+}
+
+.form-grid {
+  overflow: hidden;
+}
+
+.form-field {
+  opacity: 0;
+  transform: translateX(20px);
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+/* Staggered animations for form fields */
+.form-field:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.form-field:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.form-field:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.form-field:nth-child(4) {
+  animation-delay: 0.4s;
+}
+
+.form-field:nth-child(5) {
+  animation-delay: 0.5s;
+}
+
+.form-field:nth-child(6) {
+  animation-delay: 0.6s;
+}
+
+.form-input {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-input:focus {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.upload-button, .submit-button, .cancel-button {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s;
+}
+
+.upload-button:hover, .submit-button:hover, .cancel-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Keyframes for animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .create-plan-page-container {
+    padding: 15px;
+    margin: 20px auto;
+  }
+  
+  .create-plan-page-title {
+    margin-bottom: 15px;
+  }
+}
+
+/* Incorporating your original CSS */
 .create-plan-page-container {
     padding: 30px;
     max-width: 700px;
@@ -5,87 +107,86 @@
     background-color: #ffffff;
     border-radius: 15px;
     box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-  }
+}
   
-  .create-plan-page-title {
+.create-plan-page-title {
     text-align: center;
     margin-bottom: 30px;
     font-weight: bold;
     color: #333;
-  }
+}
   
-  .create-plan-page-form {
+.create-plan-page-form {
     display: flex;
     flex-direction: column;
-  }
+}
   
-  .create-plan-page-text-field {
+.create-plan-page-text-field {
     margin-bottom: 20px;
-  }
+}
   
-  .create-plan-page-text-field .MuiInputBase-root {
+.create-plan-page-text-field .MuiInputBase-root {
     transition: border-color 0.3s, box-shadow 0.3s;
-  }
+}
   
-  .create-plan-page-text-field .MuiInputBase-root.Mui-focused {
+.create-plan-page-text-field .MuiInputBase-root.Mui-focused {
     border-color: #00509e;
     box-shadow: 0 0 8px rgba(0, 123, 255, 0.25);
-  }
+}
   
-  .create-plan-page-upload-button {
+.create-plan-page-upload-button {
     margin-top: 10px;
     background-color: #00509e;
     color: #fff;
-  }
+}
   
-  .create-plan-page-upload-button:hover {
+.create-plan-page-upload-button:hover {
     background-color: #00509e;
-  }
+}
   
-  .create-plan-page-submit-button {
+.create-plan-page-submit-button {
     margin-top: 20px;
     background-color: #00509e;
     color: #fff;
-  }
+}
   
-  .create-plan-page-submit-button:hover {
+.create-plan-page-submit-button:hover {
     background-color: #00509e;
-  }
+}
   
-  .create-plan-page-snackbar {
+.create-plan-page-snackbar {
     display: flex;
     justify-content: center;
-  }
+}
 
-  .create-data-page-container {
+.create-data-page-container {
     width: 300px; /* Adjust as needed */
     padding: 16px;
-  }
+}
   
-  .create-data-page-title {
+.create-data-page-title {
     font-size: 1.2rem;
-  }
+}
   
-  .create-data-page-form {
+.create-data-page-form {
     display: flex;
     flex-direction: column;
-  }
+}
   
-  .create-data-page-text-field,
-  .create-data-page-upload-button,
-  .create-data-page-submit-button {
+.create-data-page-text-field,
+.create-data-page-upload-button,
+.create-data-page-submit-button {
     margin-bottom: 8px; /* Reduce the margin for compact layout */
-  }
+}
   
-  .create-data-page-upload-button {
+.create-data-page-upload-button {
     width: 100%;
-  }
+}
   
-  .create-data-page-submit-button {
+.create-data-page-submit-button {
     width: 100%;
-  }
+}
   
-  .create-data-page-snackbar {
+.create-data-page-snackbar {
     width: 100%;
-  }
-  
+}

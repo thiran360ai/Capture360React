@@ -6,13 +6,108 @@ import {
   Typography,
   Card,
   CardContent,
-  CardMedia,
   Modal,
   CircularProgress,
 } from "@mui/material";
 import CreateDataPage from "./CreateDataPage";
 import img from './img.jpg';
 
+// ImageLoader component for handling images from ngrok
+const ImageLoader = ({ imageUrl, onClick = null, style = {} }) => {
+  const [imageData, setImageData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const fetchImage = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        
+        const response = await fetch(imageUrl, {
+          headers: {
+            Accept: "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+            "ngrok-skip-browser-warning": "true",
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load image: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        setImageData(URL.createObjectURL(blob));
+        setError(false);
+      } catch (error) {
+        console.error("Error fetching image:", error);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (imageUrl) {
+      fetchImage();
+    } else {
+      setError(true);
+      setLoading(false);
+    }
+    
+    // Cleanup function to revoke object URL
+    return () => {
+      if (imageData) {
+        URL.revokeObjectURL(imageData);
+      }
+    };
+  }, [imageUrl]);
+
+  if (loading) {
+    return (
+      <Box 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center',
+          height: '200px',
+          ...style
+        }}
+      >
+        <CircularProgress size={30} color="inherit" />
+      </Box>
+    );
+  }
+
+  if (error || !imageData) {
+    return (
+      <img 
+        src={img} 
+        alt="Default Project" 
+        onClick={onClick}
+        style={{
+          objectFit: 'cover',
+          width: '100%',
+          height: '200px',
+          ...style
+        }}
+      />
+    );
+  }
+
+  return (
+    <img 
+      src={imageData} 
+      alt="Project" 
+      onClick={onClick}
+      style={{
+        objectFit: 'cover',
+        width: '100%',
+        height: '200px',
+        ...style
+      }}
+    />
+  );
+};
 
 const ProjectTable = () => {
   const [projects, setProjects] = useState([]);
@@ -23,33 +118,72 @@ const ProjectTable = () => {
   useEffect(() => {
     const fetchProjectData = async () => {
       try {
-        const response = await fetch("https://api.capture360.ai/building/projectlist/", {
-          headers: { Accept: "application/json" },
+        // Get token from localStorage if you're using authentication
+        const token = localStorage.getItem("token");
+
+        // Fetch projects data with proper headers
+        const response = await fetch("https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/projectlist/", {
+          method: "GET",
+          mode: "cors",
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            ...(token && { Authorization: `Bearer ${token}` }),
+            "ngrok-skip-browser-warning": "true",
+          },
         });
+
+        // Handle authentication errors
+        if (response.status === 401) {
+          console.error("Unauthorized! Token may be expired.");
+          localStorage.removeItem("token");
+          navigate("/login");
+          return;
+        }
+
+        // Check if response is OK
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        // Parse the JSON response
         const data = await response.json();
-        setProjects(data);
+        console.log("Projects data:", data);
+        
+        // Update state with fetched projects
+        setProjects(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Failed to fetch project data:", error);
       } finally {
         setLoading(false);
       }
     };
+    
     fetchProjectData();
-  }, []);
+  }, [navigate]);
 
   const handleCreateProject = () => setIsModalOpen(true);
   const handleModalClose = () => setIsModalOpen(false);
 
+  const handleImageClick = (project) => {
+    navigate("/image-view", {
+      state: { 
+        imageUrl: project.image ? 
+          `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${project.image}` : 
+          null, 
+        name: project.project 
+      },
+    });
+  };
+
   return (
     <Box
       sx={{
-       
-        
         padding: 4,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        marginTop:"20px",
+        marginTop: "20px",
       }}
     >
       {/* Header */}
@@ -68,30 +202,29 @@ const ProjectTable = () => {
           sx={{
             fontWeight: "bold",
             color: "white",
-            
           }}
         >
           Project List
         </Typography>
         <Button
-  variant="contained"
-  onClick={handleCreateProject}
-  sx={{
-    background: "linear-gradient(90deg, #ff7e5f, #feb47b)",
-    color: "#fff",
-    fontWeight: "600",
-    padding: "6px 12px", // Further reduced padding
-    minWidth: "100px", // Set a fixed minimum width
-    width: "auto", // Ensures it doesn't expand unnecessarily
-    borderRadius: "8px",
-    textTransform: "none",
-    transition: "0.3s ease-in-out",
-    ":hover": {
-      background: "linear-gradient(90deg, #feb47b, #ff7e5f)",
-      transform: "scale(1.05)",
-    },
-  }}
->
+          variant="contained"
+          onClick={handleCreateProject}
+          sx={{
+            background: "linear-gradient(90deg, #ff7e5f, #feb47b)",
+            color: "#fff",
+            fontWeight: "600",
+            padding: "6px 12px",
+            minWidth: "100px",
+            width: "auto",
+            borderRadius: "8px",
+            textTransform: "none",
+            transition: "0.3s ease-in-out",
+            ":hover": {
+              background: "linear-gradient(90deg, #feb47b, #ff7e5f)",
+              transform: "scale(1.05)",
+            },
+          }}
+        >
           + Add Project
         </Button>
       </Box>
@@ -101,7 +234,7 @@ const ProjectTable = () => {
         <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
           <CircularProgress color="inherit" />
         </Box>
-      ) : (
+      ) : projects.length > 0 ? (
         <Box
           sx={{
             display: "grid",
@@ -113,7 +246,7 @@ const ProjectTable = () => {
         >
           {projects.map((project) => (
             <Card
-              key={project.id}
+              key={project.id || project.project_id || project.project}
               sx={{
                 background: "rgba(255, 255, 255, 0.15)",
                 backdropFilter: "blur(12px)",
@@ -124,26 +257,29 @@ const ProjectTable = () => {
                   transform: "translateY(-5px)",
                   boxShadow: "0 15px 35px rgba(0, 0, 0, 0.4)",
                 },
+                overflow: "hidden",
               }}
             >
-              <CardMedia
-                component="img"
-                height="200"
-                image={img}
-                alt={project.project}
-                sx={{
+              <Box 
+                sx={{ 
+                  height: "200px", 
                   borderTopLeftRadius: "16px",
                   borderTopRightRadius: "16px",
+                  overflow: "hidden",
                   cursor: "pointer",
-                  transition: "0.3s ease-in-out",
-                  ":hover": { opacity: 0.9 },
                 }}
-                onClick={() =>
-                  navigate("/image-view", {
-                    state: { imageUrl: `https://api.capture360.ai/${img}`, name: project.project },
-                  })
-                }
-              />
+              >
+                <ImageLoader 
+                  imageUrl={project.image ? `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${project.image}` : null}
+                  onClick={() => handleImageClick(project)}
+                  style={{
+                    borderTopLeftRadius: "16px",
+                    borderTopRightRadius: "16px",
+                    transition: "0.3s ease-in-out",
+                    ":hover": { opacity: 0.9 },
+                  }}
+                />
+              </Box>
               <CardContent>
                 <Typography
                   variant="h6"
@@ -165,6 +301,12 @@ const ProjectTable = () => {
               </CardContent>
             </Card>
           ))}
+        </Box>
+      ) : (
+        <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "50vh" }}>
+          <Typography variant="h6" sx={{ color: "white" }}>
+            No projects available
+          </Typography>
         </Box>
       )}
 
