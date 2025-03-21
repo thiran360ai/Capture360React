@@ -62,7 +62,7 @@ const PlanDetailsPage = () => {
   const [error, setError] = useState(null);
   const { title } = location.state || { title: "Plan Details" };
   
-  const API_BASE_URL = "https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app";
+  const API_BASE_URL = "https:/api.capture360.ai/";
 
   useEffect(() => {
     fetchPlanDetails();

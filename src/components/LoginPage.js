@@ -15,7 +15,7 @@ const LoginPage = ({ onLoginSuccess }) => {
     setSuccess('');
     try {
       const response = await axios.post(
-        'https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/login/',
+        'https://api.capture360.ai/building/login/',
         {
           username,
           password,

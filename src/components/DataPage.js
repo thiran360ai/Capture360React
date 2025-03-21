@@ -133,7 +133,7 @@ const DataPage = ({ createUser = false }) => {
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const endpoint = apiEndpoint || "https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/projectlist/";
+      const endpoint = apiEndpoint || "https://api.capture360.ai/building/projectlist/";
       
       const response = await fetch(endpoint, {
         method: "GET",
@@ -184,7 +184,7 @@ const DataPage = ({ createUser = false }) => {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      const viewUrl = `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/projectlist/${row.project}/`;
+      const viewUrl = `https://api.capture360.ai/building/projectlist/${row.project}/`;
       
       const response = await fetch(viewUrl, {
         method: "GET",
@@ -209,12 +209,30 @@ const DataPage = ({ createUser = false }) => {
       }
 
       const data = await response.json();
+      console.log("Successfully fetched project details:", data);
+      
+      // Navigate with the data
       navigate("/plan-details", {
-        state: { title: `Plan Details for Project ${row.project}`, data },
+        state: { 
+          title: `Plan Details for Project ${row.project}`, 
+          data: data,
+          projectId: row.project
+        },
       });
     } catch (error) {
       console.error("Failed to fetch view data:", error);
       setError("Failed to load project details. Please try again later.");
+      
+      // Even on error, try to navigate with minimal data so the UI doesn't break
+      const fallbackData = { project: row.project, name: row.name || `Project ${row.project}` };
+      navigate("/plan-details", {
+        state: { 
+          title: `Plan Details for Project ${row.project}`, 
+          data: fallbackData,
+          projectId: row.project,
+          error: "Failed to load complete data. Some features may be limited."
+        },
+      });
     } finally {
       setLoading(false);
     }
@@ -358,8 +376,8 @@ const DataPage = ({ createUser = false }) => {
                     >
                       {key === "image" ? (
                         <ImageLoader 
-                          imageUrl={`https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${value}`}
-                          onClick={() => handleImageClick(`https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${value}`, row.name || row.project)}
+                          imageUrl={`https://api.capture360.ai/${value}`}
+                          onClick={() => handleImageClick(`https://api.capture360.ai/${value}`, row.name || row.project)}
                         />
                       ) : value}
                     </TableCell>

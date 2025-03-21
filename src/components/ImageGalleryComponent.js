@@ -9,6 +9,8 @@ import Select from "@mui/material/Select";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
 import arrowimg from './arrow-icon-1182.png';
 import * as THREE from 'three';
+// Import a static floor map image (you'll need to add this file to your project)
+import staticFloorMapImage from './static-floor-map.jpg';
 
 const theme = createTheme();
 
@@ -36,6 +38,12 @@ const ImageGalleryComponent = () => {
   const [navPoints, setNavPoints] = useState([]);
   const [currentNavPointIndex, setCurrentNavPointIndex] = useState(0);
   const [cursorValues, setCursorValues] = useState({ x: 0, y: 0 });
+  const [graphData, setGraphData] = useState(null);
+  const [showGraphOnMap, setShowGraphOnMap] = useState(true);
+  const [graphPoints, setGraphPoints] = useState([]);
+  const [selectedPointIndex, setSelectedPointIndex] = useState(0);
+  const [isGraphLoaded, setIsGraphLoaded] = useState(false);
+  const [graphPointToImageMap, setGraphPointToImageMap] = useState({});
 
   useEffect(() => {
     if (id) {
@@ -60,7 +68,7 @@ const ImageGalleryComponent = () => {
   const fetchFloorMap = async (buildingId) => {
     try {
       const response = await fetch(
-        `https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/building/api/video-frames/plan/${buildingId}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${buildingId}/`,
         {
           headers: {
             Accept: "application/json",
@@ -74,21 +82,82 @@ const ImageGalleryComponent = () => {
 
       const data = await response.json();
       if (data && data.length > 0 && data[0].image) {
-        setFloorMapUrl(`https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/${data[0].image}`);
+        setFloorMapUrl(`https://api.capture360.ai/${data[0].image}`);
         fetchNavigationPoints(buildingId, data[0].id);
       } else {
         console.warn("No floor map found for this building");
+        // Set static floor map image when API doesn't return a floor map
+        setFloorMapUrl(staticFloorMapImage);
       }
     } catch (error) {
       console.error("Failed to fetch floor map:", error);
+      // Set static floor map image when API request fails
+      setFloorMapUrl(staticFloorMapImage);
     }
   };
   
+  const fetchGraphData = async (jsonId) => {
+    if (!jsonId) return;
+    
+    try {
+      const response = await fetch(
+        `https://api.capture360.ai/building/api/graph-data/${jsonId}/`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setGraphData(data);
+      
+      // Also fetch floor plan data to get the actual points
+      try {
+        const floorPlanResponse = await fetch(
+          `https://api.capture360.ai/building/getFloorPlan/${jsonId}/`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
+        
+        if (floorPlanResponse.ok) {
+          const floorData = await floorPlanResponse.json();
+          if (floorData && floorData[0]?.data) {
+            const parsedPoints = JSON.parse(floorData[0].data);
+            
+            // Create a map of point indexes to images
+            const pointMap = {};
+            if (imagesLeft.length > 0) {
+              parsedPoints.forEach((_, index) => {
+                const imageIndex = Math.min(index, imagesLeft.length - 1);
+                pointMap[index] = imageIndex;
+              });
+              setGraphPointToImageMap(pointMap);
+            }
+            
+            setGraphPoints(parsedPoints);
+            setIsGraphLoaded(true);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch floor plan data:", error);
+      }
+    } catch (error) {
+      console.error("Failed to fetch graph data:", error);
+    }
+  };
 
   const fetchNavigationPoints = async (buildingId, floorMapId) => {
     try {
       const response = await fetch(
-        `https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/building/api/navigation-points/building/${buildingId}/floor/${floorMapId}/`,
+        `https://api.capture360.ai/building/api/navigation-points/building/${buildingId}/floor/${floorMapId}/`,
         {
           headers: {
             Accept: "application/json",
@@ -140,7 +209,7 @@ const ImageGalleryComponent = () => {
       }
 
       const response = await fetch(
-        `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/api/video-frames/plan/${id}/video/${frameId}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${id}/video/${frameId}/`,
         {
           headers: {
             Accept: "application/json",
@@ -153,7 +222,13 @@ const ImageGalleryComponent = () => {
       }
 
       const imageData = await response.json();
-      setJsonid(imageData[0]?.json);
+      const jsonIdValue = imageData[0]?.json;
+      setJsonid(jsonIdValue);
+      
+      // Fetch graph data when jsonid changes
+      if (jsonIdValue) {
+        fetchGraphData(jsonIdValue);
+      }
       
       if (Array.isArray(imageData)) {
         const validImages = imageData.filter(
@@ -182,7 +257,7 @@ const ImageGalleryComponent = () => {
         if (isRight) {
           setImagesRight(imagesWithNavData);
           setCurrentIndexRight(0);
-          setImageUrlRight(imagesWithNavData[0]?.image ? `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${imagesWithNavData[0].image}` : "");
+          setImageUrlRight(imagesWithNavData[0]?.image ? `https://api.capture360.ai/${imagesWithNavData[0].image}` : "");
           
           if (imagesWithNavData[0]?.navPoint) {
             setUserPosition({
@@ -193,7 +268,7 @@ const ImageGalleryComponent = () => {
         } else {
           setImagesLeft(imagesWithNavData);
           setCurrentIndexLeft(0);
-          setImageUrlLeft(imagesWithNavData[0]?.image ? `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${imagesWithNavData[0].image}` : "");
+          setImageUrlLeft(imagesWithNavData[0]?.image ? `https://api.capture360.ai/${imagesWithNavData[0].image}` : "");
           
           if (imagesWithNavData[0]?.navPoint) {
             setUserPosition({
@@ -201,6 +276,16 @@ const ImageGalleryComponent = () => {
               y: imagesWithNavData[0].navPoint.y
             });
           }
+        }
+        
+        // After loading images, update the graph point to image mapping
+        if (graphPoints.length > 0) {
+          const pointMap = {};
+          graphPoints.forEach((_, index) => {
+            const imageIndex = Math.min(index, validImages.length - 1);
+            pointMap[index] = imageIndex;
+          });
+          setGraphPointToImageMap(pointMap);
         }
       } else {
         console.warn("Unexpected API response structure:", imageData);
@@ -215,7 +300,7 @@ const ImageGalleryComponent = () => {
   const fetchDates = async (id) => {
     try {
       const response = await fetch(
-        `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/building/api/video-frames/plan/${id}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${id}/`,
         {
           headers: {
             Accept: "application/json",
@@ -289,6 +374,11 @@ const ImageGalleryComponent = () => {
       });
       setCurrentNavPointIndex(nextPointIndex);
     }
+    
+    // Update selected point in graph if we have graph data
+    if (graphPoints.length > 0) {
+      setSelectedPointIndex(nextLeftIndex % graphPoints.length);
+    }
   };
 
   const handlePrevLeft = () => {
@@ -310,6 +400,11 @@ const ImageGalleryComponent = () => {
         y: navPoints[prevPointIndex].y
       });
       setCurrentNavPointIndex(prevPointIndex);
+    }
+    
+    // Update selected point in graph if we have graph data
+    if (graphPoints.length > 0) {
+      setSelectedPointIndex(prevLeftIndex % graphPoints.length);
     }
   };
 
@@ -364,13 +459,80 @@ const ImageGalleryComponent = () => {
     });
   };
 
+  const toggleGraphOnMap = () => {
+    setShowGraphOnMap(prev => !prev);
+  };
+  
+  // Handle graph point click from the LineGraph component
+  const handleGraphPointClick = (pointNumber) => {
+    setIsPaused(true); // Pause any automatic cycling
+    
+    // Set the selected point index
+    setSelectedPointIndex(pointNumber - 1);
+    
+    // Get the corresponding image index
+    const imageIndex = graphPointToImageMap[pointNumber - 1] || 0;
+    
+    // Update both views with the selected image
+    setCurrentIndexLeft(imageIndex);
+    setCurrentIndexRight(imageIndex);
+    
+    // Update user position based on the image's navigation point
+    if (imagesLeft[imageIndex]?.navPoint) {
+      setUserPosition({
+        x: imagesLeft[imageIndex].navPoint.x,
+        y: imagesLeft[imageIndex].navPoint.y
+      });
+    } else if (graphPoints[pointNumber - 1]) {
+      // If no nav point but we have graph data, use the graph point
+      // Scale graph coordinates to map coordinates (assuming they're in the same coordinate system)
+      const [x, y] = graphPoints[pointNumber - 1];
+      
+      // Normalize coordinates to 0-100 range for the floor map display
+      // This is a basic scaling and might need adjustment based on your data
+      const minX = Math.min(...graphPoints.map(point => point[0]));
+      const maxX = Math.max(...graphPoints.map(point => point[0]));
+      const minY = Math.min(...graphPoints.map(point => point[1]));
+      const maxY = Math.max(...graphPoints.map(point => point[1]));
+      
+      const normalizedX = ((x - minX) / (maxX - minX)) * 100;
+      const normalizedY = ((y - minY) / (maxY - minY)) * 100;
+      
+      setUserPosition({
+        x: normalizedX,
+        y: normalizedY
+      });
+    }
+  };
+
+  const handleGraphDataLoad = (data) => {
+    setGraphData(data);
+    
+    // Process raw points data
+    if (data && data.points) {
+      // Extract point coordinates
+      const points = data.points.map(point => [point.x || 0, point.y || 0]);
+      setGraphPoints(points);
+      
+      // Create mapping of graph points to images
+      if (imagesLeft.length > 0) {
+        const pointMap = {};
+        points.forEach((_, index) => {
+          const imageIndex = Math.min(index, imagesLeft.length - 1);
+          pointMap[index] = imageIndex;
+        });
+        setGraphPointToImageMap(pointMap);
+      }
+    }
+  };
+
   const FloorMapOverlay = ({ rotation, userPosition }) => {
     const mapContainerStyle = {
       position: 'absolute',
       top: '20px',
       right: '20px',
-      width: '150px',
-      height: '150px',
+      width: '200px',
+      height: '200px',
       border: '2px solid #333',
       borderRadius: '5px',
       overflow: 'hidden',
@@ -431,8 +593,169 @@ const ImageGalleryComponent = () => {
       });
     };
 
+    // Render path based on graph data
+    const renderGraphPath = () => {
+      if (!graphData || !showGraphOnMap) return null;
+      
+      // First, check if we have graphPoints from floor plan
+      if (graphPoints.length > 0) {
+        // Normalize coordinates to 0-100 range for the floor map display
+        const minX = Math.min(...graphPoints.map(point => point[0]));
+        const maxX = Math.max(...graphPoints.map(point => point[0]));
+        const minY = Math.min(...graphPoints.map(point => point[1]));
+        const maxY = Math.max(...graphPoints.map(point => point[1]));
+        
+        const normalizedPoints = graphPoints.map(([x, y]) => ({
+          x: ((x - minX) / (maxX - minX)) * 100,
+          y: ((y - minY) / (maxY - minY)) * 100
+        }));
+        
+        return (
+          <svg style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 99,
+          }}>
+            <path
+              d={normalizedPoints.map((point, i) => (
+                `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+              )).join(' ')}
+              stroke="rgba(255, 0, 0, 0.7)"
+              strokeWidth="2"
+              fill="none"
+              strokeDasharray="5,5"
+            />
+            {normalizedPoints.map((point, i) => (
+              <circle
+                key={i}
+                cx={point.x}
+                cy={point.y}
+                r="3"
+                fill={i === selectedPointIndex ? "yellow" : i === 0 ? "green" : i === normalizedPoints.length - 1 ? "red" : "orange"}
+              />
+            ))}
+          </svg>
+        );
+      }
+      
+      // If no graphPoints, try to use graphData.points
+      try {
+        const pathPoints = graphData.points || [];
+        
+        if (pathPoints.length === 0) return null;
+        
+        // Create SVG path
+        return (
+          <svg style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 99,
+          }}>
+            <path
+              d={pathPoints.map((point, i) => {
+                // Scale the points to percentage coordinates
+                const x = point.x || (point.xPos ? point.xPos * 100 : 0);
+                const y = point.y || (point.yPos ? point.yPos * 100 : 0);
+                return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+              }).join(' ')}
+              stroke="rgba(255, 0, 0, 0.7)"
+              strokeWidth="2"
+              fill="none"
+              strokeDasharray="5,5"
+            />
+            {pathPoints.map((point, i) => (
+              <circle
+                key={i}
+                cx={point.x || (point.xPos ? point.xPos * 100 : 0)}
+                cy={point.y || (point.yPos ? point.yPos * 100 : 0)}
+                r="3"
+                fill={i === selectedPointIndex ? "yellow" : i === 0 ? "green" : i === pathPoints.length - 1 ? "red" : "orange"}
+              />
+            ))}
+          </svg>
+        );
+      } catch (error) {
+        console.error("Error rendering graph path:", error);
+        return null;
+      }
+    };
+
+    const controlsStyle = {
+      position: 'absolute',
+      top: '5px',
+      right: '5px',
+      zIndex: 103,
+    };
+
+    // If we don't have actual graph data yet, create a dummy path for demo purposes
+    const createDummyPath = () => {
+      if (!showGraphOnMap) return null;
+      
+      // Create a path that connects the navigation points
+      const dummyPoints = navPoints.length > 1 ? 
+        navPoints : 
+        [
+          { x: 20, y: 20 },
+          { x: 40, y: 30 },
+          { x: 60, y: 40 },
+          { x: 80, y: 60 },
+          { x: 70, y: 80 }
+        ];
+      
+      return (
+        <svg style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          pointerEvents: 'none',
+          zIndex: 99,
+        }}>
+          <path
+            d={dummyPoints.map((point, i) => (
+              `${i === 0 ? 'M' : 'L'} ${point.x} ${point.y}`
+            )).join(' ')}
+            stroke="rgba(255, 0, 0, 0.7)"
+            strokeWidth="2"
+            fill="none"
+            strokeDasharray="5,5"
+          />
+          {dummyPoints.map((point, i) => (
+            <circle
+              key={i}
+              cx={point.x}
+              cy={point.y}
+              r="3"
+              fill={i === selectedPointIndex % dummyPoints.length ? "yellow" : i === 0 ? "green" : i === dummyPoints.length - 1 ? "red" : "orange"}
+            />
+          ))}
+        </svg>
+      );
+    };
+
     return (
       <div style={mapContainerStyle}>
+        <div style={controlsStyle}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            size="small" 
+            onClick={toggleGraphOnMap}
+            style={{ padding: '2px 5px', fontSize: '10px' }}
+          >
+            {showGraphOnMap ? 'Hide Path' : 'Show Path'}
+          </Button>
+        </div>
+
         {floorMapUrl ? (
           <>
             <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
@@ -448,6 +771,7 @@ const ImageGalleryComponent = () => {
                   style={mapStyle} 
                 />
                 {renderNavPoints()}
+                {graphData || graphPoints.length > 0 ? renderGraphPath() : createDummyPath()}
               </div>
               <div style={userPositionStyle}></div>
               <div style={directionIndicatorStyle}></div>
@@ -455,7 +779,12 @@ const ImageGalleryComponent = () => {
           </>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <Typography variant="caption">Floor Map Not Available</Typography>
+            <img 
+              src={staticFloorMapImage} 
+              alt="Default Floor Map" 
+              style={mapStyle} 
+            />
+            {graphData || graphPoints.length > 0 ? renderGraphPath() : createDummyPath()}
           </div>
         )}
       </div>
@@ -483,7 +812,7 @@ const ImageGalleryComponent = () => {
       );
     }
 
-    const url = `https://9a7e-2409-40f4-201c-1293-8db2-f79e-87d0-63ff.ngrok-free.app/${imageObj.image}`;
+    const url = `https://api.capture360.ai/${imageObj.image}`;
     const timestamp = imageObj.timestamp || "Unknown Date";
 
     return (
@@ -520,6 +849,44 @@ const ImageGalleryComponent = () => {
           updateUserPosition={updateUserPosition}
           setCursorValues={setCursorValues}
         />
+      </div>
+    );
+  };
+
+  // Mini LineGraph component for the floor map
+  const MiniLineGraph = ({ data, containerStyle }) => {
+    if (!data) return null;
+    
+    const graphStyle = {
+      position: 'absolute',
+      bottom: '10px',
+      left: '10px',
+      width: '180px',
+      height: '70px',
+      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+      padding: '5px',
+      borderRadius: '3px',
+      zIndex: 103,
+      ...containerStyle
+    };
+    
+    return (
+      <div style={graphStyle}>
+        <Typography variant="caption" style={{ fontWeight: 'bold', marginBottom: '3px' }}>
+          Path Data
+        </Typography>
+        <div style={{ width: '100%', height: '40px' }}>
+          {/* Simplified line graph visualization */}
+          <svg width="100%" height="100%" viewBox="0 0 100 30">
+            <polyline
+              points="0,30 20,20 40,25 60,15 80,10 100,5"
+              fill="none"
+              stroke="blue"
+              strokeWidth="2"
+            />
+            <line x1="0" y1="30" x2="100" y2="30" stroke="#ccc" strokeWidth="1" />
+          </svg>
+        </div>
       </div>
     );
   };
@@ -565,6 +932,8 @@ const ImageGalleryComponent = () => {
                 rotation={floorMapRotation} 
                 userPosition={userPosition}
               />
+              {/* Add mini line graph to the floor map */}
+              {showGraphOnMap && <MiniLineGraph data={graphData} />}
             </div>
           </div>
           <div style={{ flex: 1, padding: '10px', position: 'relative' }}>
@@ -587,6 +956,8 @@ const ImageGalleryComponent = () => {
                 rotation={floorMapRotation} 
                 userPosition={userPosition}
               />
+              {/* Add mini line graph to the floor map */}
+              {showGraphOnMap && <MiniLineGraph data={graphData} />}
             </div>
           </div>
         </div>
@@ -597,6 +968,7 @@ const ImageGalleryComponent = () => {
             setCurrentIndexLeft={setCurrentIndexLeft}
             setCurrentIndexRight={setCurrentIndexRight}
             maxFrames={Math.min(imagesLeft.length, imagesRight.length)}
+            onGraphDataLoad={(data) => setGraphData(data)}
           />
         )}
 
