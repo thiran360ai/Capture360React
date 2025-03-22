@@ -38,7 +38,7 @@ const RegisterForm = ({onClose}) => {
     console.log('Submitting form data:', formData);
     setLoading(true)
     try {
-      const response = await fetch('https://api.capture360.ai/building/create_user/', {
+      const response = await fetch('https://ff55-59-97-51-97.ngrok-free.app/building/create_user/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

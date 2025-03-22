@@ -54,6 +54,7 @@ const App = () => {
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [liveEmployees, setLiveEmployees] = useState(0);
   const [cardsVisible, setCardsVisible] = useState([false, false, false, false]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const navigate = useNavigate();
 
@@ -66,41 +67,75 @@ const App = () => {
   };
 
   useEffect(() => {
-    const fetchProjectData = async () => {
+    const fetchData = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch(
-          "https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/building/projectlist/",
-          { headers: { Accept: "application/json" } }
-        );
-        const data = await response.json();
-        setTotalProjects(data.length);
-        setLiveProjects(data.length);
+        // Use Promise.all to fetch data in parallel
+        const [projectResponse, employeeResponse] = await Promise.all([
+          fetch("https://ff55-59-97-51-97.ngrok-free.app/building/projectlist/", {
+            method: "GET",
+            headers: { 
+              "Accept": "application/json",
+              "Content-Type": "application/json"
+            }
+          }),
+          fetch("https://ff55-59-97-51-97.ngrok-free.app/building/create_user/", {
+            method: "GET",
+            headers: { 
+              "Accept": "application/json",
+              "Content-Type": "application/json"
+            }
+          })
+        ]);
+
+        // Check if responses are successful
+        if (!projectResponse.ok) {
+          throw new Error(`Project API error: ${projectResponse.status}`);
+        }
+        if (!employeeResponse.ok) {
+          throw new Error(`Employee API error: ${employeeResponse.status}`);
+        }
+
+        // Parse JSON responses
+        const projectData = await projectResponse.json();
+        const employeeData = await employeeResponse.json();
+
+        // Calculate project stats
+        if (Array.isArray(projectData)) {
+          setTotalProjects(projectData.length);
+          // Assuming projects with status 'active' or similar are live
+          const activeProjCount = projectData.filter(project => 
+            project.status === 'active' || project.status === 'live'
+          ).length;
+          setLiveProjects(activeProjCount || projectData.length); // Default to all if no status field
+        }
+
+        // Calculate employee stats
+        if (Array.isArray(employeeData)) {
+          setTotalEmployees(employeeData.length);
+          // Assuming employees with status 'active' or similar are live
+          const activeEmpCount = employeeData.filter(employee => 
+            employee.status === 'active' || employee.is_active === true
+          ).length;
+          setLiveEmployees(activeEmpCount || employeeData.length); // Default to all if no status field
+        }
       } catch (error) {
-        console.error("Failed to fetch project data:", error);
+        console.error("Error fetching data:", error);
+        // Set fallback values or keep previous values
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    const fetchEmployeeData = async () => {
-      try {
-        const response = await fetch(
-          "https://11e1-2409-40f4-201c-1293-5d5-d14d-51a9-ff05.ngrok-free.app/building/create_user/",
-          { headers: { Accept: "application/json" } }
-        );
-        const data = await response.json();
-        setTotalEmployees(data.length);
-        setLiveEmployees(data.length);
-      } catch (error) {
-        console.error("Failed to fetch User data:", error);
-      }
-    };
-
-    fetchProjectData();
-    fetchEmployeeData();
-  }, []);
+    // Only fetch data if logged in
+    if (isLoggedIn) {
+      fetchData();
+    }
+  }, [isLoggedIn]);
 
   // Animation effect for cards
   useEffect(() => {
-    if (isLoggedIn) {
+    if (isLoggedIn && !isLoading) {
       // Trigger animations with a delay for each card
       const timeouts = [];
       for (let i = 0; i < 4; i++) {
@@ -119,7 +154,7 @@ const App = () => {
         timeouts.forEach(clearTimeout);
       };
     }
-  }, [isLoggedIn, totalProjects, liveProjects, totalEmployees, liveEmployees]);
+  }, [isLoggedIn, isLoading]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -191,7 +226,7 @@ const App = () => {
                                   {card.title}
                                 </Typography>
                                 <Typography variant="h5" color="primary">
-                                  {card.count}
+                                  {isLoading ? "..." : card.count}
                                 </Typography>
                               </CardContent>
                             </Card>

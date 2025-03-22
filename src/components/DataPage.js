@@ -129,11 +129,14 @@ const DataPage = ({ createUser = false }) => {
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Define base URL once for consistency
+  const API_BASE_URL = "https://ff55-59-97-51-97.ngrok-free.app";
 
   const fetchData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const endpoint = apiEndpoint || "https://api.capture360.ai/building/projectlist/";
+      const endpoint = apiEndpoint || `${API_BASE_URL}/building/projectlist/`;
       
       const response = await fetch(endpoint, {
         method: "GET",
@@ -181,61 +184,13 @@ const DataPage = ({ createUser = false }) => {
       return;
     }
 
-    try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      const viewUrl = `https://api.capture360.ai/building/projectlist/${row.project}/`;
-      
-      const response = await fetch(viewUrl, {
-        method: "GET",
-        mode: "cors",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-          "ngrok-skip-browser-warning": "true",
-        },
-      });
-
-      if (response.status === 401) {
-        console.error("Unauthorized! Token may be expired.");
-        localStorage.removeItem("token");
-        navigate("/login");
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("Successfully fetched project details:", data);
-      
-      // Navigate with the data
-      navigate("/plan-details", {
-        state: { 
-          title: `Plan Details for Project ${row.project}`, 
-          data: data,
-          projectId: row.project
-        },
-      });
-    } catch (error) {
-      console.error("Failed to fetch view data:", error);
-      setError("Failed to load project details. Please try again later.");
-      
-      // Even on error, try to navigate with minimal data so the UI doesn't break
-      const fallbackData = { project: row.project, name: row.name || `Project ${row.project}` };
-      navigate("/plan-details", {
-        state: { 
-          title: `Plan Details for Project ${row.project}`, 
-          data: fallbackData,
-          projectId: row.project,
-          error: "Failed to load complete data. Some features may be limited."
-        },
-      });
-    } finally {
-      setLoading(false);
-    }
+    navigate("/plan-details", {
+      state: { 
+        title: `Plan Details for Project ${row.project}`,
+        projectId: row.project,
+        apiEndpoint: `${API_BASE_URL}/building/plan_details/`
+      },
+    });
   };
 
   const handleImageClick = (imageUrl, name) => {
@@ -376,8 +331,8 @@ const DataPage = ({ createUser = false }) => {
                     >
                       {key === "image" ? (
                         <ImageLoader 
-                          imageUrl={`https://api.capture360.ai/${value}`}
-                          onClick={() => handleImageClick(`https://api.capture360.ai/${value}`, row.name || row.project)}
+                          imageUrl={`${API_BASE_URL}/${value}`}
+                          onClick={() => handleImageClick(`${API_BASE_URL}/${value}`, row.name || row.project)}
                         />
                       ) : value}
                     </TableCell>

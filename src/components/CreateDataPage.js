@@ -48,7 +48,7 @@ const CreateDataPage = ({ onClose }) => {
 
     try {
       const response = await fetch(
-        "https://api.capture360.ai/building/create_project_list/",
+        "https://ff55-59-97-51-97.ngrok-free.app/building/create_project_list/",
         {
           method: "POST",
           body: formData,

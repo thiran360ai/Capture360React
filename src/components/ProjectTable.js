@@ -122,7 +122,7 @@ const ProjectTable = () => {
         const token = localStorage.getItem("token");
 
         // Fetch projects data with proper headers
-        const response = await fetch("https://api.capture360.ai/building/projectlist/", {
+        const response = await fetch("https://ff55-59-97-51-97.ngrok-free.app/building/projectlist/", {
           method: "GET",
           mode: "cors",
           headers: {
@@ -169,7 +169,7 @@ const ProjectTable = () => {
     navigate("/image-view", {
       state: { 
         imageUrl: project.image ? 
-          `https://api.capture360.ai/${project.image}` : 
+          `https://ff55-59-97-51-97.ngrok-free.app/${project.image}` : 
           null, 
         name: project.project 
       },
@@ -270,7 +270,7 @@ const ProjectTable = () => {
                 }}
               >
                 <ImageLoader 
-                  imageUrl={project.image ? `https://api.capture360.ai/${project.image}` : null}
+                  imageUrl={project.image ? `https://ff55-59-97-51-97.ngrok-free.app/${project.image}` : null}
                   onClick={() => handleImageClick(project)}
                   style={{
                     borderTopLeftRadius: "16px",

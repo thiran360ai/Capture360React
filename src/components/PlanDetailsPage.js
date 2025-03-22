@@ -54,31 +54,142 @@ const LoadingContainer = styled(Box)({
   height: "300px",
 });
 
+const ImageLoader = ({ imageUrl, alt = "Image" }) => {
+  const [imageData, setImageData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const API_BASE_URL = "https://ff55-59-97-51-97.ngrok-free.app";
+
+  useEffect(() => {
+    const loadImage = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        
+        // Check if the imageUrl already starts with http or https
+        const fullImageUrl = imageUrl.startsWith('http') 
+          ? imageUrl 
+          : `${API_BASE_URL}${imageUrl}`;
+        
+        const response = await fetch(fullImageUrl, {
+          headers: {
+            ...(token && { Authorization: `Bearer ${token}` }),
+            "ngrok-skip-browser-warning": "true",
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Failed to load image: ${response.status}`);
+        }
+        
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        setImageData(objectUrl);
+        setLoading(false);
+      } catch (err) {
+        console.error("Error loading image:", err);
+        setError(true);
+        setLoading(false);
+      }
+    };
+
+    if (imageUrl) {
+      loadImage();
+    }
+
+    // Clean up function to revoke object URL
+    return () => {
+      if (imageData) {
+        URL.revokeObjectURL(imageData);
+      }
+    };
+  }, [imageUrl]);
+
+  if (loading) {
+    return (
+      <Box sx={{ position: 'relative', width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <CircularProgress size={30} thickness={3} style={{ color: "#00509e" }} />
+      </Box>
+    );
+  }
+
+  if (error || !imageData) {
+    return (
+      <Box sx={{ position: 'relative', width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5', borderRadius: '8px' }}>
+        <Typography variant="caption" color="textSecondary">Image unavailable</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box sx={{ position: 'relative', width: '100px', height: '100px' }}>
+      <img
+        src={imageData}
+        alt={alt}
+        style={{
+          width: "100px",
+          height: "100px",
+          borderRadius: "8px",
+          objectFit: "cover",
+        }}
+      />
+    </Box>
+  );
+};
+
 const PlanDetailsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [planData, setPlanData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const { title } = location.state || { title: "Plan Details" };
   
-  const API_BASE_URL = "https:/api.capture360.ai/";
+  // Get data from location state
+  const { title, projectId, apiEndpoint } = location.state || { 
+    title: "Plan Details", 
+    projectId: null 
+  };
+  
+  // Define base URL once for consistency
+  const API_BASE_URL = "https://ff55-59-97-51-97.ngrok-free.app";
 
   useEffect(() => {
     fetchPlanDetails();
-  }, []);
+  }, [projectId]); // Add projectId as dependency
 
   const fetchPlanDetails = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/building/plan_details/`);
+      const token = localStorage.getItem("token");
+      
+      // Use the provided apiEndpoint or build one with the projectId
+      const endpoint = apiEndpoint || `${API_BASE_URL}/building/plan_details/`;
+      const url = projectId ? `${endpoint}?project=${projectId}` : endpoint;
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
+      
+      if (response.status === 401) {
+        console.error("Unauthorized! Token may be expired.");
+        localStorage.removeItem("token");
+        navigate("/login");
+        return;
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
       
       const data = await response.json();
-      setPlanData(data);
+      console.log("Fetched plan data:", data);
+      setPlanData(Array.isArray(data) ? data : []);
       setLoading(false);
     } catch (err) {
       console.error("Error fetching plan details:", err);
@@ -88,34 +199,25 @@ const PlanDetailsPage = () => {
   };
 
   const handleViewPlan = (id) => {
-    navigate("/image-gallery", { state: { id } });
+    navigate("/image-gallery", { 
+      state: { 
+        id,
+        projectId
+      }
+    });
   };
 
-  const renderImage = (imageUrl) => {
-    // Check if the imageUrl already starts with http or https
-    const fullImageUrl = imageUrl.startsWith('http') 
-      ? imageUrl 
-      : `${API_BASE_URL}${imageUrl}`;
-      
-    return (
-      <Box sx={{ position: 'relative', width: '100px', height: '100px' }}>
-        <img
-          src={fullImageUrl}
-          alt="Plan"
-          style={{
-            width: "100px",
-            height: "100px",
-            borderRadius: "8px",
-            objectFit: "cover",
-          }}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = "/placeholder-image.png"; // Replace with your placeholder image
-            e.target.style.opacity = "0.5";
-          }}
-        />
-      </Box>
-    );
+  const renderCellContent = (key, value) => {
+    // Check if the value is a string that likely points to an image
+    if (
+      typeof value === "string" && 
+      (value.includes("/media/") || value.includes("/static/"))
+    ) {
+      return <ImageLoader imageUrl={value} alt={`Plan ${key}`} />;
+    }
+    
+    // Otherwise, just display the value
+    return value;
   };
 
   if (loading) {
@@ -182,10 +284,7 @@ const PlanDetailsPage = () => {
                           padding: "12px",
                         }}
                       >
-                        {typeof value === "string" && 
-                         (value.includes("/media/") || value.includes("/static/")) 
-                          ? renderImage(value)
-                          : value}
+                        {renderCellContent(key, value)}
                       </TableCell>
                     ))}
                     <TableCell align="center">

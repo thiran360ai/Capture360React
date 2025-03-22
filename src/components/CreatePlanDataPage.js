@@ -29,7 +29,7 @@ const CreatePlanDataPage = () => {
     formData.append("description", description);
 
     try {
-      const response = await fetch("https://api.capture360.ai/building/plan_details/", {
+      const response = await fetch("https://ff55-59-97-51-97.ngrok-free.app/building/plan_details/", {
         method: "POST",
         body: formData,
       });
