@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Typography from "@mui/material/Typography";
-import LineGraph from "./LineGraph";
+//import LineGraph from "./LineGraph";
 import Button from "@mui/material/Button";
 import ButtonGroup from "@mui/material/ButtonGroup";
 import MenuItem from "@mui/material/MenuItem";
@@ -39,6 +39,7 @@ const ImageGalleryComponent = () => {
   const [currentNavPointIndex, setCurrentNavPointIndex] = useState(0);
   const [cursorValues, setCursorValues] = useState({ x: 0, y: 0 });
   const [showLineGraphOnMap, setShowLineGraphOnMap] = useState(true);
+  const [indicatorRotation, setIndicatorRotation] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -63,7 +64,7 @@ const ImageGalleryComponent = () => {
   const fetchFloorMap = async (buildingId) => {
     try {
       const response = await fetch(
-        `https://ff55-59-97-51-97.ngrok-free.app/building/api/video-frames/plan/${buildingId}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${buildingId}/`,
         {
           headers: {
             Accept: "application/json",
@@ -77,7 +78,7 @@ const ImageGalleryComponent = () => {
 
       const data = await response.json();
       if (data && data.length > 0 && data[0].image) {
-        setFloorMapUrl(`https://ff55-59-97-51-97.ngrok-free.app/${data[0].image}`);
+        setFloorMapUrl(`https://api.capture360.ai/${data[0].image}`);
         fetchNavigationPoints(buildingId, data[0].id);
       } else {
         console.warn("No floor map found for this building");
@@ -94,7 +95,7 @@ const ImageGalleryComponent = () => {
   const fetchNavigationPoints = async (buildingId, floorMapId) => {
     try {
       const response = await fetch(
-        `https://ff55-59-97-51-97.ngrok-free.app/building/api/navigation-points/building/${buildingId}/floor/${floorMapId}/`,
+        `https://api.capture360.ai/building/api/navigation-points/building/${buildingId}/floor/${floorMapId}/`,
         {
           headers: {
             Accept: "application/json",
@@ -141,12 +142,11 @@ const ImageGalleryComponent = () => {
       const frameId = dateToIdMap[date];
       if (!frameId) {
         console.error("No frame ID found for the selected date.");
-        isRight ? setImagesRight([]) : setImagesLeft([]);
         return;
       }
 
       const response = await fetch(
-        `https://ff55-59-97-51-97.ngrok-free.app/building/api/video-frames/plan/${id}/video/${frameId}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${id}/video/${frameId}/`,
         {
           headers: {
             Accept: "application/json",
@@ -159,69 +159,73 @@ const ImageGalleryComponent = () => {
       }
 
       const imageData = await response.json();
-      setJsonid(imageData[0]?.json);
       
-      if (Array.isArray(imageData)) {
-        const validImages = imageData.filter(
-          (image) => image && image.image
+      if (!Array.isArray(imageData) || imageData.length === 0) {
+        console.warn(`No images found for date: ${date}`);
+        if (isRight) {
+          setImagesRight([]);
+          setCurrentIndexRight(0);
+        } else {
+          setImagesLeft([]);
+          setCurrentIndexLeft(0);
+        }
+        return;
+      }
+
+      const validImages = imageData.filter(
+        (image) => image && image.image
+      ).map((image) => {
+        const matchingNavPoint = navPoints.find(point => 
+          point.frameId === image.id
         );
         
-        const imagesWithNavData = validImages.map((image, index) => {
-          const matchingNavPoint = navPoints.find(point => 
-            point.frameId === image.id || 
-            point.videoId === frameId
-          );
-          
-          if (matchingNavPoint) {
-            return {
-              ...image,
-              navPoint: {
-                x: matchingNavPoint.x,
-                y: matchingNavPoint.y,
-                label: matchingNavPoint.label
-              }
-            };
-          }
-          return image;
-        });
+        return {
+          ...image,
+          navPoint: matchingNavPoint ? {
+            x: matchingNavPoint.x,
+            y: matchingNavPoint.y,
+            label: matchingNavPoint.label
+          } : null
+        };
+      });
+
+      if (isRight) {
+        setImagesRight(validImages);
+        setCurrentIndexRight(0);
         
-        if (isRight) {
-          setImagesRight(imagesWithNavData);
-          setCurrentIndexRight(0);
-          setImageUrlRight(imagesWithNavData[0]?.image ? `https://ff55-59-97-51-97.ngrok-free.app/${imagesWithNavData[0].image}` : "");
-          
-          if (imagesWithNavData[0]?.navPoint) {
-            setUserPosition({
-              x: imagesWithNavData[0].navPoint.x,
-              y: imagesWithNavData[0].navPoint.y
-            });
-          }
-        } else {
-          setImagesLeft(imagesWithNavData);
-          setCurrentIndexLeft(0);
-          setImageUrlLeft(imagesWithNavData[0]?.image ? `https://ff55-59-97-51-97.ngrok-free.app/${imagesWithNavData[0].image}` : "");
-          
-          if (imagesWithNavData[0]?.navPoint) {
-            setUserPosition({
-              x: imagesWithNavData[0].navPoint.x,
-              y: imagesWithNavData[0].navPoint.y
-            });
-          }
+        if (validImages[0]?.navPoint) {
+          setUserPosition({
+            x: validImages[0].navPoint.x,
+            y: validImages[0].navPoint.y
+          });
         }
       } else {
-        console.warn("Unexpected API response structure:", imageData);
-        isRight ? setImagesRight([]) : setImagesLeft([]);
+        setImagesLeft(validImages);
+        setCurrentIndexLeft(0);
+        
+        if (validImages[0]?.navPoint) {
+          setUserPosition({
+            x: validImages[0].navPoint.x,
+            y: validImages[0].navPoint.y
+          });
+        }
       }
     } catch (error) {
       console.error("Failed to fetch images:", error);
-      isRight ? setImagesRight([]) : setImagesLeft([]);
+      if (isRight) {
+        setImagesRight([]);
+        setCurrentIndexRight(0);
+      } else {
+        setImagesLeft([]);
+        setCurrentIndexLeft(0);
+      }
     }
   };
   
   const fetchDates = async (id) => {
     try {
       const response = await fetch(
-        `https://ff55-59-97-51-97.ngrok-free.app/building/api/video-frames/plan/${id}/`,
+        `https://api.capture360.ai/building/api/video-frames/plan/${id}/`,
         {
           headers: {
             Accept: "application/json",
@@ -329,48 +333,55 @@ const ImageGalleryComponent = () => {
     setIsPaused(true);
   };
 
-  const updateFloorMapOrientation = (direction, cameraRotation) => {
-    if (cameraRotation !== undefined) {
-      setFloorMapRotation(cameraRotation);
-    } else {
-      switch (direction) {
-        case "left":
-          setFloorMapRotation(prev => (prev - 5) % 360);
-          break;
-        case "right":
-          setFloorMapRotation(prev => (prev + 5) % 360);
-          break;
-        default:
-          break;
-      }
-    }
-  };
-
-  const updateUserPosition = (direction, distance = 2) => {
+    const updateUserPositionByAngle = (angleInDegrees) => {
     setUserPosition(prev => {
-      const radians = (floorMapRotation * Math.PI) / 180;
-      let dx = 0, dy = 0;
-      
-      if (direction === "up") {
-        dx = Math.sin(radians) * distance;
-        dy = -Math.cos(radians) * distance;
-      } else if (direction === "down") {
-        dx = -Math.sin(radians) * distance;
-        dy = Math.cos(radians) * distance;
-      } else if (direction === "left") {
-        dx = -Math.cos(radians) * distance;
-        dy = -Math.sin(radians) * distance;
-      } else if (direction === "right") {
-        dx = Math.cos(radians) * distance;
-        dy = Math.sin(radians) * distance;
-      }
-      
-      return {
-        x: Math.max(0, Math.min(100, prev.x + dx)),
-        y: Math.max(0, Math.min(100, prev.y + dy))
-      };
+      const radians = (angleInDegrees * Math.PI) / 180;
+      const speed = 2; // Adjust for movement sensitivity
+  
+      const dx = Math.cos(radians) * speed;
+      const dy = Math.sin(radians) * speed;
+  
+      const newX = Math.max(0, Math.min(100, prev.x + dx));
+      const newY = Math.max(0, Math.min(100, prev.y + dy));
+  
+      // Update indicator angle to match movement direction
+      setIndicatorRotation(angleInDegrees);
+  
+      return { x: newX, y: newY };
     });
   };
+  
+  const updateFloorMapOrientation = (direction, cameraRotation) => {
+    let newRotation;
+  
+    if (cameraRotation !== undefined) {
+      // For full 360-degree rotation based on camera
+      newRotation = -cameraRotation;
+    } else {
+      // Discrete rotation for specific directions
+      switch (direction) {
+        case "left":
+          newRotation = floorMapRotation - 45;
+          break;
+        case "right":
+          newRotation = floorMapRotation + 45;
+          break;
+        case "up":
+          newRotation = floorMapRotation - 90;
+          break;
+        case "down":
+          newRotation = floorMapRotation + 90;
+          break;
+        default:
+          return;
+      }
+    }
+  
+    newRotation = (newRotation + 360) % 360;
+    setFloorMapRotation(newRotation);
+    setIndicatorRotation(newRotation);
+  };
+  
 
   const FloorMapOverlay = ({ rotation, userPosition }) => {
     const mapContainerStyle = {
@@ -386,14 +397,14 @@ const ImageGalleryComponent = () => {
       backgroundColor: 'white',
       boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
     };
-
+  
     const mapStyle = {
       width: '100%',
       height: '100%',
       objectFit: 'cover',
       transition: 'transform 0.2s ease-out',
     };
-
+  
     const userPositionStyle = {
       position: 'absolute',
       left: `${userPosition.x}%`,
@@ -406,21 +417,53 @@ const ImageGalleryComponent = () => {
       boxShadow: '0 0 0 2px white',
       zIndex: 101,
     };
-
+  
     const directionIndicatorStyle = {
       position: 'absolute',
       left: `${userPosition.x}%`,
       top: `${userPosition.y}%`,
-      width: '0',
-      height: '0',
-      borderLeft: '6px solid transparent',
-      borderRight: '6px solid transparent',
-      borderBottom: '12px solid blue',
-      transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+      width: '30px',
+      height: '30px',
+      background: 'radial-gradient(rgba(255, 255, 0, 0.2), rgba(255, 255, 0, 0.6))',
+      clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
+      transform: `translate(-50%, -100%) rotate(${indicatorRotation}deg)`,
       transformOrigin: 'center bottom',
+      pointerEvents: 'none',
       zIndex: 102,
+      transition: 'transform 0.4s ease-in-out, left 0.2s ease, top 0.2s ease',
+      filter: 'drop-shadow(0 0 8px rgba(255, 255, 0, 0.4))',
+      opacity: 0.85,
     };
-
+  
+    const renderDottedLinePath = () => {
+      if (!navPoints || navPoints.length < 2) return null;
+  
+      const lines = [];
+  
+      for (let i = 0; i < navPoints.length - 1; i++) {
+        const from = navPoints[i];
+        const to = navPoints[i + 1];
+  
+        const lineStyle = {
+          position: 'absolute',
+          left: `${from.x}%`,
+          top: `${from.y}%`,
+          width: '2px',
+          height: `${Math.hypot(to.x - from.x, to.y - from.y)}%`,
+          backgroundImage: 'linear-gradient(to bottom, yellow 30%, transparent 30%)',
+          backgroundSize: '2px 6px',
+          transformOrigin: 'top left',
+          transform: `translate(-50%, -50%) rotate(${Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI}deg)`,
+          zIndex: 98,
+          pointerEvents: 'none',
+        };
+  
+        lines.push(<div key={`line-${i}`} style={lineStyle}></div>);
+      }
+  
+      return lines;
+    };
+  
     const renderNavPoints = () => {
       return navPoints.map((point, index) => {
         const navPointStyle = {
@@ -434,46 +477,39 @@ const ImageGalleryComponent = () => {
           transform: 'translate(-50%, -50%)',
           zIndex: 100,
         };
-        
-        return <div key={index} style={navPointStyle} title={point.label || `Point ${index+1}`}></div>;
+  
+        return (
+          <div
+            key={index}
+            style={navPointStyle}
+            title={point.label || `Point ${index + 1}`}
+          ></div>
+        );
       });
     };
-
+  
     return (
       <div style={mapContainerStyle}>
         {floorMapUrl ? (
-          <>
-            <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-              <div style={{
-                width: '100%', 
-                height: '100%', 
-                position: 'absolute',
-                transform: `rotate(${-rotation}deg)`,
-              }}>
-                <img 
-                  src={floorMapUrl} 
-                  alt="Floor Map" 
-                  style={mapStyle} 
-                />
-                {renderNavPoints()}
-              </div>
-              <div style={userPositionStyle}></div>
-              <div style={directionIndicatorStyle}></div>
+          <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '100%', position: 'absolute' }}>
+              <img src={floorMapUrl} alt="Floor Map" style={mapStyle} />
+              {renderNavPoints()}
+              {renderDottedLinePath()}
             </div>
-          </>
+            <div style={userPositionStyle}></div>
+            <div style={directionIndicatorStyle}></div>
+          </div>
         ) : (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <img 
-              src={staticFloorMapImage} 
-              alt="Default Floor Map" 
-              style={mapStyle} 
-            />
+            <img src={staticFloorMapImage} alt="Default Floor Map" style={mapStyle} />
           </div>
         )}
       </div>
     );
   };
-
+  
+  
   const renderImage = (imageObj) => {
     if (!imageObj || typeof imageObj !== 'object' || !imageObj.image) {
       return (
@@ -495,7 +531,7 @@ const ImageGalleryComponent = () => {
       );
     }
 
-    const url = `https://ff55-59-97-51-97.ngrok-free.app/${imageObj.image}`;
+    const url = `https://api.capture360.ai/${imageObj.image}`;
     const timestamp = imageObj.timestamp || "Unknown Date";
 
     return (
@@ -529,7 +565,7 @@ const ImageGalleryComponent = () => {
           arrowDirection={arrowDirection} 
           setArrowDirection={setArrowDirection} 
           updateFloorMapOrientation={updateFloorMapOrientation}
-          updateUserPosition={updateUserPosition}
+          updateUserPositionByAngle={updateUserPositionByAngle}
           setCursorValues={setCursorValues}
         />
       </div>
@@ -548,20 +584,7 @@ const ImageGalleryComponent = () => {
           position: "relative",
         }}
       >
-        {/* Main LineGraph Component */}
-        {jsonid && (
-          <div style={{ width: '100%', marginBottom: '20px' }}>
-            <LineGraph
-              id={jsonid}
-              setCurrentIndexLeft={setCurrentIndexLeft}
-              setCurrentIndexRight={setCurrentIndexRight}
-              maxFrames={Math.min(imagesLeft.length, imagesRight.length)}
-              showLabels={true}
-              height="120px"
-              width="100%"
-            />
-          </div>
-        )}
+
         
         {/* Split View (only view available now) */}
         <div style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -733,14 +756,16 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, updateFloorMapOr
     setCursorPos({ x, y, z });
     setCursorValues({ x, y });
 
-    if (Math.abs(movementX) > Math.abs(movementY)) {
-      const direction = movementX > 0 ? "right" : "left";
-      setArrowDirection(direction);
-      setMovementDirection(direction);
-    } else {
-      const direction = movementY > 0 ? "down" : "up";
-      setArrowDirection(direction);
-      setMovementDirection(direction);
+    // Enhance rotation detection
+    if (event.buttons === 1) { // Check if mouse button is pressed
+      if (Math.abs(movementX) > Math.abs(movementY)) {
+        const direction = movementX > 0 ? "right" : "left";
+        setArrowDirection(direction);
+        updateFloorMapOrientation(direction);
+      } else {
+        const direction = movementY > 0 ? "down" : "up";
+        setArrowDirection(direction);
+      }
     }
   };
 

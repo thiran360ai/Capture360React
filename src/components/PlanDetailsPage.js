@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -10,7 +10,6 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import { styled } from "@mui/material/styles";
-import CircularProgress from "@mui/material/CircularProgress";
 
 // Styled Components
 const StyledTableContainer = styled(Box)({
@@ -47,203 +46,31 @@ const ActionButton = styled(Button)({
   },
 });
 
-const LoadingContainer = styled(Box)({
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  height: "300px",
-});
+const PlanDetailsPage = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { title, data } = location.state || {};
+  console.log("data", data)
 
-const ImageLoader = ({ imageUrl, alt = "Image" }) => {
-  const [imageData, setImageData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const API_BASE_URL = "https://ff55-59-97-51-97.ngrok-free.app";
+  const handleViewPlan = (id) => {
+    navigate("/image-gallery", { state: { id } });
+  };
 
-  useEffect(() => {
-    const loadImage = async () => {
-      try {
-        setLoading(true);
-        const token = localStorage.getItem("token");
-        
-        // Check if the imageUrl already starts with http or https
-        const fullImageUrl = imageUrl.startsWith('http') 
-          ? imageUrl 
-          : `${API_BASE_URL}${imageUrl}`;
-        
-        const response = await fetch(fullImageUrl, {
-          headers: {
-            ...(token && { Authorization: `Bearer ${token}` }),
-            "ngrok-skip-browser-warning": "true",
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to load image: ${response.status}`);
-        }
-        
-        const blob = await response.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        setImageData(objectUrl);
-        setLoading(false);
-      } catch (err) {
-        console.error("Error loading image:", err);
-        setError(true);
-        setLoading(false);
-      }
-    };
-
-    if (imageUrl) {
-      loadImage();
-    }
-
-    // Clean up function to revoke object URL
-    return () => {
-      if (imageData) {
-        URL.revokeObjectURL(imageData);
-      }
-    };
-  }, [imageUrl]);
-
-  if (loading) {
+  const renderImage = (imageUrl) => {
+    const fullImageUrl = `https://api.capture360.ai/${imageUrl}`;
     return (
-      <Box sx={{ position: 'relative', width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <CircularProgress size={30} thickness={3} style={{ color: "#00509e" }} />
-      </Box>
-    );
-  }
-
-  if (error || !imageData) {
-    return (
-      <Box sx={{ position: 'relative', width: '100px', height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f5f5', borderRadius: '8px' }}>
-        <Typography variant="caption" color="textSecondary">Image unavailable</Typography>
-      </Box>
-    );
-  }
-
-  return (
-    <Box sx={{ position: 'relative', width: '100px', height: '100px' }}>
       <img
-        src={imageData}
-        alt={alt}
+        src={fullImageUrl}
+        alt="Plan"
         style={{
           width: "100px",
-          height: "100px",
+          height: "auto",
           borderRadius: "8px",
           objectFit: "cover",
         }}
       />
-    </Box>
-  );
-};
-
-const PlanDetailsPage = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [planData, setPlanData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Get data from location state
-  const { title, projectId, apiEndpoint } = location.state || { 
-    title: "Plan Details", 
-    projectId: null 
-  };
-  
-  // Define base URL once for consistency
-  const API_BASE_URL = "https://ff55-59-97-51-97.ngrok-free.app";
-
-  useEffect(() => {
-    fetchPlanDetails();
-  }, [projectId]); // Add projectId as dependency
-
-  const fetchPlanDetails = async () => {
-    try {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      
-      // Use the provided apiEndpoint or build one with the projectId
-      const endpoint = apiEndpoint || `${API_BASE_URL}/building/plan_details/`;
-      const url = projectId ? `${endpoint}?project=${projectId}` : endpoint;
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-          "ngrok-skip-browser-warning": "true",
-        },
-      });
-      
-      if (response.status === 401) {
-        console.error("Unauthorized! Token may be expired.");
-        localStorage.removeItem("token");
-        navigate("/login");
-        return;
-      }
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log("Fetched plan data:", data);
-      setPlanData(Array.isArray(data) ? data : []);
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching plan details:", err);
-      setError("Failed to load plan details. Please try again later.");
-      setLoading(false);
-    }
-  };
-
-  const handleViewPlan = (id) => {
-    navigate("/image-gallery", { 
-      state: { 
-        id,
-        projectId
-      }
-    });
-  };
-
-  const renderCellContent = (key, value) => {
-    // Check if the value is a string that likely points to an image
-    if (
-      typeof value === "string" && 
-      (value.includes("/media/") || value.includes("/static/"))
-    ) {
-      return <ImageLoader imageUrl={value} alt={`Plan ${key}`} />;
-    }
-    
-    // Otherwise, just display the value
-    return value;
-  };
-
-  if (loading) {
-    return (
-      <LoadingContainer>
-        <CircularProgress size={60} thickness={4} style={{ color: "#00509e" }} />
-      </LoadingContainer>
     );
-  }
-
-  if (error) {
-    return (
-      <Box style={{ padding: "32px", textAlign: "center" }}>
-        <Typography variant="h6" color="error" gutterBottom>
-          {error}
-        </Typography>
-        <Button 
-          variant="contained" 
-          onClick={fetchPlanDetails}
-          style={{ marginTop: "16px" }}
-        >
-          Retry
-        </Button>
-      </Box>
-    );
-  }
+  };
 
   return (
     <Box style={{ backgroundColor: "#f4f7fa", minHeight: "100vh", padding: "16px" }}>
@@ -257,24 +84,25 @@ const PlanDetailsPage = () => {
           marginBottom: "16px",
         }}
       >
-        {title || "Plan Details for Project"}
+        {title || "Plan Details for Project 1"}
       </Typography>
 
-      {planData && planData.length > 0 ? (
+      {data ? (
         <Paper elevation={3} style={{ padding: "16px", maxWidth: "100%" }}>
           <StyledTableContainer>
             <StyledTable stickyHeader>
               <TableHead>
                 <TableRow>
-                  {Object.keys(planData[0]).map((key, index) => (
+                  {Object.keys(data[0]).map((key, index) => (
                     <HeaderCell key={index}>{key}</HeaderCell>
                   ))}
                   <HeaderCell>Action</HeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {planData.map((row, index) => (
+                {data.map((row, index) => (
                   <TableRow key={index}>
+                    
                     {Object.entries(row).map(([key, value], idx) => (
                       <TableCell
                         key={idx}
@@ -284,11 +112,13 @@ const PlanDetailsPage = () => {
                           padding: "12px",
                         }}
                       >
-                        {renderCellContent(key, value)}
+                        {typeof value === "string" && value.includes("/media/")
+                          ? renderImage(value)
+                          : value}
                       </TableCell>
                     ))}
                     <TableCell align="center">
-                      <ActionButton onClick={() => handleViewPlan(row.id || index)}>
+                      <ActionButton onClick={() => handleViewPlan(row.id)}>
                         View 360°
                       </ActionButton>
                     </TableCell>

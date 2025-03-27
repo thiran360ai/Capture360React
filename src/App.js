@@ -72,14 +72,14 @@ const App = () => {
       try {
         // Use Promise.all to fetch data in parallel
         const [projectResponse, employeeResponse] = await Promise.all([
-          fetch("https://ff55-59-97-51-97.ngrok-free.app/building/projectlist/", {
+          fetch("https://api.capture360.ai/building/projectlist/", {
             method: "GET",
             headers: { 
               "Accept": "application/json",
               "Content-Type": "application/json"
             }
           }),
-          fetch("https://ff55-59-97-51-97.ngrok-free.app/building/create_user/", {
+          fetch("https://api.capture360.ai/building/create_user/", {
             method: "GET",
             headers: { 
               "Accept": "application/json",
