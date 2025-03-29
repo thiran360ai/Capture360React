@@ -40,6 +40,8 @@ const ImageGalleryComponent = () => {
   const [cursorValues, setCursorValues] = useState({ x: 0, y: 0 });
   const [showLineGraphOnMap, setShowLineGraphOnMap] = useState(true);
   const [indicatorRotation, setIndicatorRotation] = useState(0);
+  // Add a state to track camera rotation from VR scene
+  const [cameraYRotation, setCameraYRotation] = useState(0);
 
   useEffect(() => {
     if (id) {
@@ -333,10 +335,13 @@ const ImageGalleryComponent = () => {
     setIsPaused(true);
   };
 
-    const updateUserPositionByAngle = (angleInDegrees) => {
+  // Updated to use camera rotation
+  const updateUserPositionByAngle = (angleInDegrees) => {
     setUserPosition(prev => {
-      const radians = (angleInDegrees * Math.PI) / 180;
-      const speed = 2; // Adjust for movement sensitivity
+      // Use camera Y rotation as the base angle
+      const adjustedAngle = (angleInDegrees + cameraYRotation) % 360;
+      const radians = (adjustedAngle * Math.PI) / 180;
+      const speed = 5; // Adjust for movement sensitivity
   
       const dx = Math.cos(radians) * speed;
       const dy = Math.sin(radians) * speed;
@@ -344,44 +349,48 @@ const ImageGalleryComponent = () => {
       const newX = Math.max(0, Math.min(100, prev.x + dx));
       const newY = Math.max(0, Math.min(100, prev.y + dy));
   
-      // Update indicator angle to match movement direction
-      setIndicatorRotation(angleInDegrees);
-  
       return { x: newX, y: newY };
     });
   };
   
+  // Update to directly use camera rotation
   const updateFloorMapOrientation = (direction, cameraRotation) => {
-    let newRotation;
-  
     if (cameraRotation !== undefined) {
       // For full 360-degree rotation based on camera
-      newRotation = -cameraRotation;
-    } else {
-      // Discrete rotation for specific directions
+      setFloorMapRotation(cameraRotation);
+      setIndicatorRotation(cameraRotation);
+    } else if (direction) {
+      // Discrete rotation for specific directions - fallback
+      let newRotation = floorMapRotation;
+      
       switch (direction) {
         case "left":
-          newRotation = floorMapRotation - 45;
+          newRotation = floorMapRotation - 20;
           break;
         case "right":
-          newRotation = floorMapRotation + 45;
+          newRotation = floorMapRotation + 20;
           break;
         case "up":
-          newRotation = floorMapRotation - 90;
+          newRotation = floorMapRotation - 20;
           break;
         case "down":
-          newRotation = floorMapRotation + 90;
+          newRotation = floorMapRotation + 20;
           break;
         default:
           return;
       }
+      
+      newRotation = (newRotation + 360) % 360;
+      setFloorMapRotation(newRotation);
+      setIndicatorRotation(newRotation);
     }
-  
-    newRotation = (newRotation + 360) % 360;
-    setFloorMapRotation(newRotation);
-    setIndicatorRotation(newRotation);
   };
   
+  // New handler for camera rotation updates from VR scene
+  const handleCameraRotationUpdate = (rotationY) => {
+    setCameraYRotation(rotationY);
+    setIndicatorRotation(rotationY);
+  };
 
   const FloorMapOverlay = ({ rotation, userPosition }) => {
     const mapContainerStyle = {
@@ -430,7 +439,7 @@ const ImageGalleryComponent = () => {
       transformOrigin: 'center bottom',
       pointerEvents: 'none',
       zIndex: 102,
-      transition: 'transform 0.4s ease-in-out, left 0.2s ease, top 0.2s ease',
+      transition: 'transform 0.2s ease-out, left 0.2s ease, top 0.2s ease',
       filter: 'drop-shadow(0 0 8px rgba(255, 255, 0, 0.4))',
       opacity: 0.85,
     };
@@ -567,6 +576,7 @@ const ImageGalleryComponent = () => {
           updateFloorMapOrientation={updateFloorMapOrientation}
           updateUserPositionByAngle={updateUserPositionByAngle}
           setCursorValues={setCursorValues}
+          onCameraRotationUpdate={handleCameraRotationUpdate}
         />
       </div>
     );
@@ -584,7 +594,6 @@ const ImageGalleryComponent = () => {
           position: "relative",
         }}
       >
-
         
         {/* Split View (only view available now) */}
         <div style={{ display: 'flex', width: '100%', height: '100%' }}>
@@ -670,13 +679,24 @@ const ImageGalleryComponent = () => {
           <Typography variant="body2">
             Cursor Position: X: {cursorValues.x.toFixed(2)}, Y: {cursorValues.y.toFixed(2)}
           </Typography>
+          <Typography variant="body2">
+            Camera Rotation: {cameraYRotation.toFixed(1)}°
+          </Typography>
         </div>
       </div>
     </ThemeProvider>
   );  
 };
 
-const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, updateFloorMapOrientation, updateUserPosition, setCursorValues }) => {
+const VRScene = ({ 
+  imageUrl, 
+  arrowDirection, 
+  setArrowDirection, 
+  updateFloorMapOrientation, 
+  updateUserPositionByAngle, 
+  setCursorValues,
+  onCameraRotationUpdate
+}) => {
   const [skySrc, setSkySrc] = useState('');
   const vrSceneRef = useRef(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0, z: -2 });
@@ -685,6 +705,7 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, updateFloorMapOr
   const [isMoving, setIsMoving] = useState(false);
   const [movementDirection, setMovementDirection] = useState(null);
   const lastMousePosition = useRef({ x: 0, y: 0 });
+  const animationFrameRef = useRef(null);
 
   useEffect(() => {
     const fetchImages = async () => {
@@ -711,6 +732,7 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, updateFloorMapOr
     fetchImages();
   }, [imageUrl]);
 
+  // Track camera rotation continuously
   useEffect(() => {
     if (vrSceneRef.current) {
       const scene = vrSceneRef.current.querySelector('a-scene');
@@ -720,28 +742,59 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, updateFloorMapOr
           if (camera) {
             cameraRef.current = camera;
             
-            camera.addEventListener('componentchanged', (event) => {
-              if (event.detail.name === 'rotation') {
-                const rotation = event.detail.newData;
-                setCameraRotation(rotation);
-                updateFloorMapOrientation(null, -rotation.y);
+            // Set up continuous monitoring of camera rotation
+            const updateCameraRotation = () => {
+              if (cameraRef.current) {
+                // Access the Three.js object directly for more accurate rotation
+                const object3D = cameraRef.current.object3D;
+                if (object3D) {
+                  // Convert rotation to degrees for easier use
+                  const rotation = {
+                    x: THREE.MathUtils.radToDeg(object3D.rotation.x),
+                    y: THREE.MathUtils.radToDeg(object3D.rotation.y),
+                    z: THREE.MathUtils.radToDeg(object3D.rotation.z)
+                  };
+                  
+                  setCameraRotation(rotation);
+                  
+                  // Normalize Y rotation to 0-360 range for consistent direction
+                  let normalizedY = (rotation.y + 360) % 360;
+                  
+                  // Update parent components with camera rotation
+                  if (updateFloorMapOrientation) {
+                    updateFloorMapOrientation(null, normalizedY);
+                  }
+                  
+                  if (onCameraRotationUpdate) {
+                    onCameraRotationUpdate(normalizedY);
+                  }
+                }
               }
-            });
+              animationFrameRef.current = requestAnimationFrame(updateCameraRotation);
+            };
+            
+            updateCameraRotation();
           }
         });
       }
     }
-  }, [vrSceneRef.current]);
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [vrSceneRef.current, updateFloorMapOrientation, onCameraRotationUpdate]);
 
   useEffect(() => {
     if (isMoving && movementDirection) {
       const moveInterval = setInterval(() => {
-        updateUserPosition(movementDirection, 1);
+        updateUserPositionByAngle(movementDirection, 1);
       }, 100);
       
       return () => clearInterval(moveInterval);
     }
-  }, [isMoving, movementDirection]);
+  }, [isMoving, movementDirection, updateUserPositionByAngle]);
 
   const handleMouseMove = (event) => {
     const x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -756,12 +809,11 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, updateFloorMapOr
     setCursorPos({ x, y, z });
     setCursorValues({ x, y });
 
-    // Enhance rotation detection
+    // Update movement direction based on mouse movement
     if (event.buttons === 1) { // Check if mouse button is pressed
       if (Math.abs(movementX) > Math.abs(movementY)) {
         const direction = movementX > 0 ? "right" : "left";
         setArrowDirection(direction);
-        updateFloorMapOrientation(direction);
       } else {
         const direction = movementY > 0 ? "down" : "up";
         setArrowDirection(direction);
@@ -769,14 +821,41 @@ const VRScene = ({ imageUrl, arrowDirection, setArrowDirection, updateFloorMapOr
     }
   };
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (event) => {
     setIsMoving(true);
+    lastMousePosition.current = { x: event.clientX, y: event.clientY };
+    
+    // Determine initial movement direction
+    if (arrowDirection) {
+      let angleInDegrees;
+      
+      // Convert direction to angle, considering camera rotation
+      switch (arrowDirection) {
+        case "up":
+          angleInDegrees = 0;
+          break;
+        case "right":
+          angleInDegrees = 90;
+          break;
+        case "down":
+          angleInDegrees = 180;
+          break;
+        case "left":
+          angleInDegrees = 270;
+          break;
+        default:
+          angleInDegrees = 0;
+      }
+      
+      setMovementDirection(angleInDegrees);
+    }
   };
 
   const handleMouseUp = () => {
     setIsMoving(false);
+    setMovementDirection(null);
   };
-
+  
   const ArrowComponent = ({ direction }) => {
     const arrowStyle = {
       position: 'absolute',

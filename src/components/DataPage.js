@@ -13,6 +13,24 @@ import { Box, Card, CardContent } from "@mui/material";
 import "./DataPage.css";
 import RegisterForm from "./RegisterForm";
 
+const mockData = [
+  {
+    id: 1,
+    name: "Building A",
+    project: "101",
+    location: "Downtown",
+    image: "/images/sample1.jpg"
+  },
+  {
+    id: 2,
+    name: "Building B",
+    project: "102",
+    location: "Midtown",
+    image: "/images/sample2.jpg"
+  }
+];
+
+
 const DataPage = ({ createUser = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -20,30 +38,35 @@ const DataPage = ({ createUser = false }) => {
   const [fetchedData, setFetchedData] = useState(null);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
   const [imageLoadErrors, setImageLoadErrors] = useState({});
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (apiEndpoint) {
-      const fetchData = async () => {
+    const fetchData = async () => {
+      if (apiEndpoint) {
         try {
           const response = await fetch(apiEndpoint, {
             headers: {
               Accept: "application/json",
             },
           });
-          
+
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          
+
           const jsonData = await response.json();
           setFetchedData(jsonData);
-        } catch (error) {
-          console.error("Failed to fetch data:", error);
-          // Optionally set an error state to show to the user
+        } catch (err) {
+          console.error("API not working, using mock data instead:", err);
+          setFetchedData(mockData); // fallback data
+          setError(true);
         }
-      };
-      fetchData();
-    }
+      } else {
+        setFetchedData(mockData); // fallback if no endpoint
+      }
+    };
+
+    fetchData();
   }, [apiEndpoint]);
 
   const handleView = async (row) => {
@@ -59,48 +82,44 @@ const DataPage = ({ createUser = false }) => {
           Accept: "application/json",
         },
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       navigate("/plan-details", {
         state: { title: `Plan Details for Project ${row.project}`, data },
       });
     } catch (error) {
       console.error("Failed to fetch view data:", error);
-      // Optionally show an error message to the user
     }
   };
 
   const renderImage = (imageUrl, name, index) => {
-    // Ensure the image URL is fully qualified
-    const fullImageUrl = imageUrl.startsWith('http') 
-      ? imageUrl 
-      : `https://api.capture360.ai/${imageUrl.replace(/^\//, '')}`;
+    const fullImageUrl = imageUrl.startsWith("http")
+      ? imageUrl
+      : `https://api.capture360.ai/${imageUrl.replace(/^\//, "")}`;
 
-    // Handle image load error
     const handleImageError = () => {
-      setImageLoadErrors(prev => ({
+      setImageLoadErrors((prev) => ({
         ...prev,
-        [index]: true
+        [index]: true,
       }));
     };
 
-    // If image failed to load, render a placeholder
     if (imageLoadErrors[index]) {
       return (
-        <Box 
+        <Box
           sx={{
-            width: "100px", 
-            height: "100px", 
+            width: "100px",
+            height: "100px",
             backgroundColor: "#f0f0f0",
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
             borderRadius: "8px",
-            color: "#666"
+            color: "#666",
           }}
         >
           No Image
@@ -128,13 +147,8 @@ const DataPage = ({ createUser = false }) => {
     );
   };
 
-  const openCreateDrawer = () => {
-    setIsCreateDrawerOpen(true);
-  };
-
-  const closeCreateDrawer = () => {
-    setIsCreateDrawerOpen(false);
-  };
+  const openCreateDrawer = () => setIsCreateDrawerOpen(true);
+  const closeCreateDrawer = () => setIsCreateDrawerOpen(false);
 
   return (
     <Card
@@ -161,8 +175,9 @@ const DataPage = ({ createUser = false }) => {
             fontFamily: "'Roboto', sans-serif",
           }}
         >
-          {title}
+          {title || "Data Page"}
         </Typography>
+
         <Box
           className="button-container"
           style={{
@@ -230,8 +245,12 @@ const DataPage = ({ createUser = false }) => {
                     backgroundColor: index % 2 === 0 ? "#f9f9f9" : "#ffffff",
                     transition: "background-color 0.3s ease",
                   }}
-                  onMouseEnter={(e) => (e.target.style.backgroundColor = "#f0f0f0")}
-                  onMouseLeave={(e) => (e.target.style.backgroundColor = "")}
+                  onMouseEnter={(e) =>
+                    (e.target.style.backgroundColor = "#f0f0f0")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.target.style.backgroundColor = "")
+                  }
                 >
                   {Object.entries(row).map(([key, value], idx) => (
                     <TableCell
@@ -243,7 +262,9 @@ const DataPage = ({ createUser = false }) => {
                         padding: "12px",
                       }}
                     >
-                      {key === "image" ? renderImage(value, row.name, index) : value}
+                      {key === "image"
+                        ? renderImage(value, row.name, index)
+                        : value}
                     </TableCell>
                   ))}
                   <TableCell style={{ textAlign: "center" }}>
@@ -275,24 +296,16 @@ const DataPage = ({ createUser = false }) => {
             </TableBody>
           </Table>
         ) : (
-          <Typography variant="body1" style={{ fontSize: "16px", color: "#333" }}>
+          <Typography style={{ padding: "20px", color: "#999999" }}>
             Loading...
           </Typography>
         )}
 
-        <Drawer
-          anchor="right"
-          open={isCreateDrawerOpen}
-          onClose={closeCreateDrawer}
-          transitionDuration={500}
-          style={{
-            transition: "all 0.3s ease",
-          }}
-        >
-          {!createUser ? (
-            <CreateDataPage onClose={closeCreateDrawer} />
-          ) : (
+        <Drawer anchor="right" open={isCreateDrawerOpen} onClose={closeCreateDrawer}>
+          {createUser ? (
             <RegisterForm onClose={closeCreateDrawer} />
+          ) : (
+            <CreateDataPage onClose={closeCreateDrawer} />
           )}
         </Drawer>
       </CardContent>

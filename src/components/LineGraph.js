@@ -1,145 +1,85 @@
-import React, { useEffect, useState } from "react";
-import {
-  ScatterChart,
-  Scatter,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
+import React from "react";
+import { 
+  ScatterChart, 
+  Scatter, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer 
 } from "recharts";
 
-const LineGraph = ({ setCurrentIndexLeft, setCurrentIndexRight, maxFrames, id }) => {
-  const [rawData, setRawData] = useState([]);
-  const [parsedData, setParsedData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+// Updated LineGraph component to accept props
+const LineGraph = ({ data, width, height, currentPosition, navPoints, currentNavPointIndex }) => {
+  // Use the navigation points if provided, otherwise fall back to static data
+  const pathData = navPoints && navPoints.length > 0 
+    ? navPoints.map(point => ({ x: point.x, y: point.y })) 
+    : [
+        { x: 10, y: 20 },
+        { x: 20, y: 30 },
+        { x: 30, y: 40 },
+        { x: 40, y: 50 },
+        { x: 50, y: 60 },
+        { x: 60, y: 70 },
+        { x: 70, y: 80 },
+        { x: 80, y: 90 },
+      ];
 
-  useEffect(() => {
-    const fetchFloorData = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(
-          `https://api.capture360.ai/building/getFloorPlan/${id}/`,
-          {
-            headers: {
-              Accept: "application/json",
-            },
-          }
-        );
-        const res_data = await response.json();
+  // Current user position as a data point
+  const userPositionData = currentPosition ? [{ x: currentPosition.x, y: currentPosition.y }] : [];
 
-        if (res_data && res_data[0]?.data) {
-          const parsedRawData = JSON.parse(res_data[0].data);
-          setRawData(parsedRawData);
-        } else {
-          setError("No data found for this floor.");
-        }
-      } catch (error) {
-        setError("Failed to fetch floor data. Please try again later.");
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFloorData();
-  }, [id]);
+  // Highlight the current navigation point
+  const currentNavPoint = navPoints && currentNavPointIndex !== undefined && navPoints.length > 0
+    ? [{ x: navPoints[currentNavPointIndex].x, y: navPoints[currentNavPointIndex].y }]
+    : [];
 
-  useEffect(() => {
-    if (rawData.length > 0) {
-      const parsed = rawData.map(([x, y], index) => ({
-        x,
-        y,
-        pointNumber: index + 1,
-      }));
-      setParsedData(parsed);
-    } else {
-      setParsedData([]);
-    }
-  }, [rawData]);
-
-  const fetchByPoint = (pointNumber) => {
-    const newIndex = Math.min(pointNumber - 1, maxFrames - 1);
-    setCurrentIndexLeft(newIndex);
-    setCurrentIndexRight(newIndex);
-  };
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const { pointNumber, x, y } = payload[0].payload;
-      return React.createElement(
-        "div",
-        {
-          style: {
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
-            padding: "5px",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-          },
-        },
-        React.createElement("p", null, `Point: ${pointNumber}`),
-        React.createElement("p", null, `X: ${x}`),
-        React.createElement("p", null, `Y: ${y}`)
-      );
-    }
-    return null;
-  };
-
-  if (loading) {
-    return React.createElement("div", null, "Loading data...");
-  }
-
-  if (error) {
-    return React.createElement("div", null, error);
-  }
-
-  const centerX = parsedData.reduce((acc, point) => acc + point.x, 0) / parsedData.length;
-  const centerY = parsedData.reduce((acc, point) => acc + point.y, 0) / parsedData.length;
-  const centeredData = [{ x: centerX, y: centerY, pointNumber: 0 }, ...parsedData];
-
-  return React.createElement(
-    "div",
-    { style: { width: "100%", height: "400px", marginTop: "30px" } },
-    React.createElement("h1", null, "Floor Map"),
-    React.createElement(
-      ResponsiveContainer,
-      { width: "100%", height: "100%" },
-      React.createElement(
-        ScatterChart,
-        { margin: { top: 30, right: 20, bottom: 30, left: 30 } },
-        React.createElement(CartesianGrid, { strokeDasharray: "3 3" }),
-        React.createElement(XAxis, {
-          dataKey: "x",
-          type: "number",
-          domain: ["auto", "auto"],
-          hide: true,
-        }),
-        React.createElement(YAxis, {
-          dataKey: "y",
-          type: "number",
-          domain: ["auto", "auto"],
-          hide: true,
-        }),
-        React.createElement(Tooltip, { content: React.createElement(CustomTooltip), cursor: false }),
-        React.createElement(Line, {
-          type: "monotone",
-          data: centeredData,
-          dataKey: "y",
-          stroke: "#8884d8",
-          dot: { r: 6, fill: "#8884d8" },
-          connectNulls: true,
-          isAnimationActive: false,
-        }),
-        React.createElement(Scatter, {
-          data: parsedData,
-          fill: "#8884d8",
-          shape: "circle",
-          radius: 6,
-          onClick: (e) => fetchByPoint(e.payload.pointNumber),
-        })
-      )
-    )
+  return (
+    <div style={{ width: width || "100%", height: height || "400px" }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.3)" />
+          <XAxis dataKey="x" type="number" domain={[0, 100]} hide />
+          <YAxis dataKey="y" type="number" domain={[0, 100]} hide />
+          
+          {/* Dotted line for walking path */}
+          <Line
+            type="monotone"
+            data={pathData}
+            dataKey="y"
+            stroke="#007BFF"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={{ r: 4, fill: "#007BFF" }}
+            connectNulls={true}
+          />
+          
+          {/* Navigation points */}
+          <Scatter 
+            data={pathData} 
+            fill="#007BFF" 
+            shape="circle" 
+            radius={3.5} 
+          />
+          
+          {/* Current navigation point */}
+          <Scatter 
+            data={currentNavPoint} 
+            fill="#FF5722" 
+            shape="circle" 
+            radius={5} 
+          />
+          
+          {/* User position */}
+          <Scatter 
+            data={userPositionData} 
+            fill="red" 
+            shape="circle" 
+            radius={4.5} 
+          />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
 

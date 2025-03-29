@@ -11,16 +11,41 @@ import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import { styled } from "@mui/material/styles";
 
+// 🔹 Mock Static Data
+const mockData = [
+  {
+    id: 1,
+    name: "Plan A",
+    floor: "1st Floor",
+    image: "/media/sample1.jpg",
+    description: "Main lobby area"
+  },
+  {
+    id: 2,
+    name: "Plan B",
+    floor: "2nd Floor",
+    image: "/media/sample2.jpg",
+    description: "Office layout"
+  },
+  {
+    id: 3,
+    name: "Plan C",
+    floor: "3rd Floor",
+    image: "/media/sample3.jpg",
+    description: "Conference rooms"
+  }
+];
+
 // Styled Components
 const StyledTableContainer = styled(Box)({
   width: "100%",
   overflowX: "auto",
-  maxHeight: "calc(100vh - 150px)", // Dynamic height adjustment
+  maxHeight: "calc(100vh - 150px)"
 });
 
 const StyledTable = styled(Table)({
   minWidth: "800px",
-  borderCollapse: "collapse",
+  borderCollapse: "collapse"
 });
 
 const HeaderCell = styled(TableCell)({
@@ -30,7 +55,7 @@ const HeaderCell = styled(TableCell)({
   backgroundColor: "#00509e",
   position: "sticky",
   top: 0,
-  zIndex: 2,
+  zIndex: 2
 });
 
 const ActionButton = styled(Button)({
@@ -42,22 +67,26 @@ const ActionButton = styled(Button)({
   borderRadius: "20px",
   boxShadow: "none",
   "&:hover": {
-    backgroundColor: "#003f7d",
-  },
+    backgroundColor: "#003f7d"
+  }
 });
 
 const PlanDetailsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { title, data } = location.state || {};
-  console.log("data", data)
+
+  // Use static data if API is unavailable
+  const planData = data || mockData;
 
   const handleViewPlan = (id) => {
     navigate("/image-gallery", { state: { id } });
   };
 
   const renderImage = (imageUrl) => {
-    const fullImageUrl = `https://api.capture360.ai/${imageUrl}`;
+    const fullImageUrl = imageUrl.startsWith("http")
+      ? imageUrl
+      : `https://api.capture360.ai/${imageUrl.replace(/^\//, "")}`;
     return (
       <img
         src={fullImageUrl}
@@ -66,7 +95,7 @@ const PlanDetailsPage = () => {
           width: "100px",
           height: "auto",
           borderRadius: "8px",
-          objectFit: "cover",
+          objectFit: "cover"
         }}
       />
     );
@@ -81,35 +110,34 @@ const PlanDetailsPage = () => {
         style={{
           color: "#2e3b4e",
           fontWeight: "700",
-          marginBottom: "16px",
+          marginBottom: "16px"
         }}
       >
-        {title || "Plan Details for Project 1"}
+        {title || "Plan Details for Project"}
       </Typography>
 
-      {data ? (
+      {planData && planData.length > 0 ? (
         <Paper elevation={3} style={{ padding: "16px", maxWidth: "100%" }}>
           <StyledTableContainer>
             <StyledTable stickyHeader>
               <TableHead>
                 <TableRow>
-                  {Object.keys(data[0]).map((key, index) => (
+                  {Object.keys(planData[0]).map((key, index) => (
                     <HeaderCell key={index}>{key}</HeaderCell>
                   ))}
                   <HeaderCell>Action</HeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {data.map((row, index) => (
+                {planData.map((row, index) => (
                   <TableRow key={index}>
-                    
                     {Object.entries(row).map(([key, value], idx) => (
                       <TableCell
                         key={idx}
                         style={{
                           fontSize: "14px",
                           color: "#333",
-                          padding: "12px",
+                          padding: "12px"
                         }}
                       >
                         {typeof value === "string" && value.includes("/media/")
@@ -148,7 +176,7 @@ const PlanDetailsPage = () => {
             textTransform: "none",
             padding: "12px 24px",
             borderRadius: "20px",
-            fontWeight: "bold",
+            fontWeight: "bold"
           }}
         >
           Back to Project List
