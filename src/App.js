@@ -19,32 +19,98 @@ import { ThemeProvider, createTheme } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import "./App.css";
 
+// Define keyframes for the animation in your CSS
+const slideInAnimationCSS = `
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulseEffect {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.slide-in-card {
+  animation: slideInFromRight 0.8s ease-out forwards;
+  transition: all 0.3s ease;
+}
+
+.slide-in-card:hover {
+  transform: translateY(-5px);
+}
+
+.slide-in-card:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.slide-in-card:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.slide-in-card:nth-child(3) {
+  animation-delay: 0.5s;
+}
+
+.slide-in-card:nth-child(4) {
+  animation-delay: 0.7s;
+}
+
+.card-icon {
+  transition: transform 0.3s ease;
+}
+
+.slide-in-card:hover .card-icon {
+  transform: scale(1.2);
+}
+
+.card-title {
+  transition: color 0.3s ease;
+}
+
+.slide-in-card:hover .card-title {
+  color: #006bb3;
+}
+
+.card-count {
+  transition: transform 0.3s ease;
+}
+
+.slide-in-card:hover .card-count {
+  transform: scale(1.1);
+}
+`;
+
 const theme = createTheme({
   palette: {
     mode: "light",
+    primary: {
+      main: "#006bb3",
+    },
   },
 });
-
-// Base card style
-const baseCardStyle = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  p: 0.5,
-  boxShadow: 2,
-  borderRadius: 2,
-  bgcolor: "#f8f9fa",
-  minHeight: 150,
-  maxWidth: 280,
-  mx: "auto",
-  transition: "transform 0.3s ease, box-shadow 0.3s ease",
-  "&:hover": {
-    transform: "scale(1.05)",
-    boxShadow: 6,
-    cursor: "pointer",
-  }
-};
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -53,8 +119,7 @@ const App = () => {
   const [liveProjects, setLiveProjects] = useState(0);
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [liveEmployees, setLiveEmployees] = useState(0);
-  const [cardsVisible, setCardsVisible] = useState([false, false, false, false]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [animationLoaded, setAnimationLoaded] = useState(false);
 
   const navigate = useNavigate();
 
@@ -64,97 +129,71 @@ const App = () => {
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
+    // Add a slight delay before starting animations
+    setTimeout(() => {
+      setAnimationLoaded(true);
+    }, 300);
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Use Promise.all to fetch data in parallel
-        const [projectResponse, employeeResponse] = await Promise.all([
-          fetch("https://api.capture360.ai/building/projectlist/", {
-            method: "GET",
-            headers: { 
-              "Accept": "application/json",
-              "Content-Type": "application/json"
-            }
-          }),
-          fetch("https://api.capture360.ai/building/create_user/", {
-            method: "GET",
-            headers: { 
-              "Accept": "application/json",
-              "Content-Type": "application/json"
-            }
-          })
-        ]);
+    // Add animation styles to the document head
+    const styleElement = document.createElement('style');
+    styleElement.innerHTML = slideInAnimationCSS;
+    document.head.appendChild(styleElement);
 
-        // Check if responses are successful
-        if (!projectResponse.ok) {
-          throw new Error(`Project API error: ${projectResponse.status}`);
-        }
-        if (!employeeResponse.ok) {
-          throw new Error(`Employee API error: ${employeeResponse.status}`);
-        }
-
-        // Parse JSON responses
-        const projectData = await projectResponse.json();
-        const employeeData = await employeeResponse.json();
-
-        // Calculate project stats
-        if (Array.isArray(projectData)) {
-          setTotalProjects(projectData.length);
-          // Assuming projects with status 'active' or similar are live
-          const activeProjCount = projectData.filter(project => 
-            project.status === 'active' || project.status === 'live'
-          ).length;
-          setLiveProjects(activeProjCount || projectData.length); // Default to all if no status field
-        }
-
-        // Calculate employee stats
-        if (Array.isArray(employeeData)) {
-          setTotalEmployees(employeeData.length);
-          // Assuming employees with status 'active' or similar are live
-          const activeEmpCount = employeeData.filter(employee => 
-            employee.status === 'active' || employee.is_active === true
-          ).length;
-          setLiveEmployees(activeEmpCount || employeeData.length); // Default to all if no status field
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        // Set fallback values or keep previous values
-      } finally {
-        setIsLoading(false);
-      }
+    // Clean up function to remove the style when component unmounts
+    return () => {
+      document.head.removeChild(styleElement);
     };
+  }, []);
 
-    // Only fetch data if logged in
+  useEffect(() => {
     if (isLoggedIn) {
-      fetchData();
+      const fetchProjectData = async () => {
+        try {
+          const response = await fetch(
+            "https://api.capture360.ai/building/projectlist/",
+            { headers: { Accept: "application/json" } }
+          );
+          const data = await response.json();
+          setTotalProjects(data.length);
+          setLiveProjects(data.length);
+        } catch (error) {
+          console.error("Failed to fetch project data:", error);
+        }
+      };
+
+      const fetchEmployeeData = async () => {
+        try {
+          const response = await fetch(
+            "https://api.capture360.ai/building/create_user/",
+            { headers: { Accept: "application/json" } }
+          );
+          const data = await response.json();
+          setTotalEmployees(data.length);
+          setLiveEmployees(data.length);
+        } catch (error) {
+          console.error("Failed to fetch User data:", error);
+        }
+      };
+
+      fetchProjectData();
+      fetchEmployeeData();
+      
+      // Add a slight delay before starting animations
+      setTimeout(() => {
+        setAnimationLoaded(true);
+      }, 300);
     }
   }, [isLoggedIn]);
 
-  // Animation effect for cards
-  useEffect(() => {
-    if (isLoggedIn && !isLoading) {
-      // Trigger animations with a delay for each card
-      const timeouts = [];
-      for (let i = 0; i < 4; i++) {
-        const timeout = setTimeout(() => {
-          setCardsVisible(prev => {
-            const newState = [...prev];
-            newState[i] = true;
-            return newState;
-          });
-        }, 200 * i); // 200ms delay between each card
-        timeouts.push(timeout);
-      }
-
-      // Cleanup function
-      return () => {
-        timeouts.forEach(clearTimeout);
-      };
-    }
-  }, [isLoggedIn, isLoading]);
+  // Card color schemes
+  const cardThemes = [
+    { bgColor: "#e3f2fd", bgHover: "#bbdefb", iconColor: "#1976d2", countColor: "#0d47a1" },
+    { bgColor: "#e8f5e9", bgHover: "#c8e6c9", iconColor: "#388e3c", countColor: "#1b5e20" },
+    { bgColor: "#fff3e0", bgHover: "#ffe0b2", iconColor: "#f57c00", countColor: "#e65100" },
+    { bgColor: "#ede7f6", bgHover: "#d1c4e9", iconColor: "#7b1fa2", countColor: "#4a148c" }
+  ];
 
   return (
     <ThemeProvider theme={theme}>
@@ -208,25 +247,59 @@ const App = () => {
                         ].map((card, index) => (
                           <Grid item xs={12} sm={6} md={3} key={index} sx={{ px: 0, py: 0 }}>
                             <Card
+                              className={animationLoaded ? "slide-in-card" : ""}
                               sx={{
-                                ...baseCardStyle,
-                                transform: cardsVisible[index] ? "translateX(0)" : "translateX(100%)",
-                                opacity: cardsVisible[index] ? 1 : 0,
-                                transition: "transform 0.5s ease-out, opacity 0.5s ease-out, box-shadow 0.3s ease",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                p: 0.5,
+                                boxShadow: 2,
+                                borderRadius: 2,
+                                bgcolor: cardThemes[index].bgColor,
+                                minHeight: 150,
+                                maxWidth: 280,
+                                mx: "auto",
+                                opacity: animationLoaded ? 1 : 0,
+                                transition: "all 0.3s ease-in-out",
+                                "&:hover": {
+                                  boxShadow: 6,
+                                  bgcolor: cardThemes[index].bgHover,
+                                  transform: "translateY(-8px)",
+                                  cursor: "pointer"
+                                },
                               }}
                             >
-                              {card.icon}
+                              <div className="card-icon" style={{ 
+                                color: cardThemes[index].iconColor,
+                                padding: "8px",
+                                borderRadius: "50%",
+                                display: "flex",
+                                margin: "10px 0 5px 0"
+                              }}>
+                                {card.icon}
+                              </div>
                               <CardContent
                                 sx={{ textAlign: "center", padding: "8px" }}
                               >
                                 <Typography
+                                  className="card-title"
                                   variant="subtitle1"
                                   fontWeight="bold"
                                 >
                                   {card.title}
                                 </Typography>
-                                <Typography variant="h5" color="primary">
-                                  {isLoading ? "..." : card.count}
+                                <Typography 
+                                  className="card-count"
+                                  variant="h5" 
+                                  sx={{
+                                    display: "inline-block",
+                                    color: cardThemes[index].countColor,
+                                    animation: animationLoaded ? "fadeIn 1s forwards" : "none",
+                                    animationDelay: `${0.6 + index * 0.2}s`
+                                  }}
+                                >
+                                  {card.count}
                                 </Typography>
                               </CardContent>
                             </Card>

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -74,31 +74,61 @@ const ActionButton = styled(Button)({
 const PlanDetailsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { title, data } = location.state || {};
+  const [planData, setPlanData] = useState([]);
+  const [pageTitle, setPageTitle] = useState("Plan Details for Project");
 
-  // Use static data if API is unavailable
-  const planData = data || mockData;
+  useEffect(() => {
+    // Extract data from location state or use mock data as fallback
+    if (location.state && location.state.data && location.state.data.length > 0) {
+      setPlanData(location.state.data);
+    } else {
+      // Use mock data as fallback
+      setPlanData(mockData);
+    }
+    
+    // Set title if available
+    if (location.state && location.state.title) {
+      setPageTitle(location.state.title);
+    }
+  }, [location.state]);
 
   const handleViewPlan = (id) => {
     navigate("/image-gallery", { state: { id } });
   };
 
   const renderImage = (imageUrl) => {
-    const fullImageUrl = imageUrl.startsWith("http")
-      ? imageUrl
-      : `https://api.capture360.ai/${imageUrl.replace(/^\//, "")}`;
-    return (
-      <img
-        src={fullImageUrl}
-        alt="Plan"
-        style={{
-          width: "100px",
-          height: "auto",
-          borderRadius: "8px",
-          objectFit: "cover"
-        }}
-      />
-    );
+    try {
+      // Handle different URL formats
+      const fullImageUrl = imageUrl.startsWith("http")
+        ? imageUrl
+        : `https://api.capture360.ai/${imageUrl.replace(/^\//, "")}`;
+
+      return (
+        <img
+          src={fullImageUrl}
+          alt="Plan"
+          style={{
+            width: "100px",
+            height: "auto",
+            borderRadius: "8px",
+            objectFit: "cover"
+          }}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "https://via.placeholder.com/100x60?text=No+Image";
+          }}
+        />
+      );
+    } catch (error) {
+      console.error("Error rendering image:", error);
+      return <span>Image unavailable</span>;
+    }
+  };
+
+  // Dynamically determine headers based on available data
+  const getTableHeaders = () => {
+    if (planData.length === 0) return [];
+    return Object.keys(planData[0]);
   };
 
   return (
@@ -113,7 +143,7 @@ const PlanDetailsPage = () => {
           marginBottom: "16px"
         }}
       >
-        {title || "Plan Details for Project"}
+        {pageTitle}
       </Typography>
 
       {planData && planData.length > 0 ? (
@@ -122,25 +152,27 @@ const PlanDetailsPage = () => {
             <StyledTable stickyHeader>
               <TableHead>
                 <TableRow>
-                  {Object.keys(planData[0]).map((key, index) => (
-                    <HeaderCell key={index}>{key}</HeaderCell>
+                  {getTableHeaders().map((header, index) => (
+                    <HeaderCell key={index}>
+                      {header.charAt(0).toUpperCase() + header.slice(1)}
+                    </HeaderCell>
                   ))}
                   <HeaderCell>Action</HeaderCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {planData.map((row, index) => (
-                  <TableRow key={index}>
-                    {Object.entries(row).map(([key, value], idx) => (
+                {planData.map((row, rowIndex) => (
+                  <TableRow key={rowIndex}>
+                    {Object.entries(row).map(([key, value], cellIndex) => (
                       <TableCell
-                        key={idx}
+                        key={`${rowIndex}-${cellIndex}`}
                         style={{
                           fontSize: "14px",
                           color: "#333",
                           padding: "12px"
                         }}
                       >
-                        {typeof value === "string" && value.includes("/media/")
+                        {key === "image" || (typeof value === "string" && value.includes("/media/"))
                           ? renderImage(value)
                           : value}
                       </TableCell>
@@ -162,7 +194,7 @@ const PlanDetailsPage = () => {
           align="center"
           style={{ color: "#555", marginTop: "30px" }}
         >
-          No plan details available.
+          Loading data... If nothing appears, no plan details are available.
         </Typography>
       )}
 

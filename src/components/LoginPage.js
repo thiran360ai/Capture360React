@@ -32,11 +32,9 @@ const LoginPage = ({ onLoginSuccess }) => {
         setSuccess('Login successful!');
         onLoginSuccess();
       } else {
-        
         setError('Invalid username or password. Please try again.');
       }
     } catch (error) {
-      
       setError('Failed to connect to the server. Please try again later.');
       console.error('Login error:', error);
     }

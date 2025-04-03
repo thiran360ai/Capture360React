@@ -1,57 +1,78 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Typography from "@mui/material/Typography";
-//import LineGraph from "./LineGraph";
 import Button from "@mui/material/Button";
 import ButtonGroup from "@mui/material/ButtonGroup";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import { ThemeProvider, createTheme } from "@mui/material/styles";
-import arrowimg from './arrow-icon-1182.png';
 import * as THREE from 'three';
-// Import a static floor map image (you'll need to add this file to your project)
+// Import a static floor map image
 import staticFloorMapImage from './static-floor-map.jpg';
+
+// Import static 360 images (you'll need to add these to your project)
+import static360Image1 from './static-floor-map.jpg';
+import static360Image2 from './static-floor-map.jpg';
+import static360Image3 from './static-floor-map.jpg';
+import static360Image4 from './static-floor-map.jpg';
 
 const theme = createTheme();
 
+// Static 360 images array
+const staticImages = [
+  { image: static360Image1, timestamp: "2024-03-15 09:30:00", navPoint: { x: 30, y: 40, label: "Entry" } },
+  { image: static360Image2, timestamp: "2024-03-15 10:15:00", navPoint: { x: 45, y: 55, label: "Hallway" } },
+  { image: static360Image3, timestamp: "2024-03-15 11:00:00", navPoint: { x: 60, y: 35, label: "Office" } },
+  { image: static360Image4, timestamp: "2024-03-15 11:45:00", navPoint: { x: 75, y: 50, label: "Conference" } },
+];
+
+// Static navigation points
+const staticNavPoints = [
+  { id: 1, x: 30, y: 40, label: "Entry", frameId: 1, videoId: 101 },
+  { id: 2, x: 45, y: 55, label: "Hallway", frameId: 2, videoId: 101 },
+  { id: 3, x: 60, y: 35, label: "Office", frameId: 3, videoId: 101 },
+  { id: 4, x: 75, y: 50, label: "Conference", frameId: 4, videoId: 101 },
+  { id: 5, x: 50, y: 70, label: "Kitchen", frameId: 5, videoId: 101 },
+];
+
 const ImageGalleryComponent = () => {
   const location = useLocation();
-  const { id } = location.state || {};
+  const { id } = location.state || { id: 1 }; // Default ID if none provided
   const [imagesLeft, setImagesLeft] = useState([]);
   const [imagesRight, setImagesRight] = useState([]);
   const [currentIndexLeft, setCurrentIndexLeft] = useState(0);
   const [currentIndexRight, setCurrentIndexRight] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [dates, setDates] = useState([]);
-  const [selectedDateLeft, setSelectedDateLeft] = useState("");
-  const [selectedDateRight, setSelectedDateRight] = useState("");
+  const [isPaused, setIsPaused] = useState(true); // Start paused
+  const [dates, setDates] = useState(["2024-03-15", "2024-03-16"]);
+  const [selectedDateLeft, setSelectedDateLeft] = useState("2024-03-15");
+  const [selectedDateRight, setSelectedDateRight] = useState("2024-03-15");
   const [isSplitScreen, setIsSplitScreen] = useState(true);
-  const [dateToIdMap, setDateToIdMap] = useState({});
-  const [imageUrlLeft, setImageUrlLeft] = useState("");
-  const [imageUrlRight, setImageUrlRight] = useState("");
-  const [arrowDirection, setArrowDirection] = useState("up");
-  const vrSceneRef = useRef(null);
-  const [floorMapUrl, setFloorMapUrl] = useState("");
+  const [floorMapUrl, setFloorMapUrl] = useState(staticFloorMapImage);
   const [floorMapRotation, setFloorMapRotation] = useState(0);
   const [userPosition, setUserPosition] = useState({ x: 50, y: 50 });
-  const [jsonid, setJsonid] = useState();
-  const [navPoints, setNavPoints] = useState([]);
+  const [jsonid, setJsonid] = useState(1); // Default JSON ID
+  const [navPoints, setNavPoints] = useState(staticNavPoints);
   const [currentNavPointIndex, setCurrentNavPointIndex] = useState(0);
   const [cursorValues, setCursorValues] = useState({ x: 0, y: 0 });
   const [showLineGraphOnMap, setShowLineGraphOnMap] = useState(true);
-  const [indicatorRotation, setIndicatorRotation] = useState(0);
-  // Add a state to track camera rotation from VR scene
-  const [cameraYRotation, setCameraYRotation] = useState(0);
+  const [arrowDirection, setArrowDirection] = useState("up");
+  const [torchRotation, setTorchRotation] = useState(0);
+  const [visitedPositions, setVisitedPositions] = useState([]); // Track positions for the line graph
+  // Add current camera angle state for both sides
+  const [leftCameraAngle, setLeftCameraAngle] = useState(0);
+  const [rightCameraAngle, setRightCameraAngle] = useState(0);
 
+  // Initialize with static data
   useEffect(() => {
-    if (id) {
-      fetchDates(id);
-      fetchFloorMap(id);
-    } else {
-      console.error("ID is undefined.");
-    }
-  }, [id]);
+    setImagesLeft(staticImages);
+    setImagesRight(staticImages);
+    setNavPoints(staticNavPoints);
+    setUserPosition({ x: staticNavPoints[0].x, y: staticNavPoints[0].y });
+    // Initialize visited positions with the first nav point
+    setVisitedPositions([{ x: staticNavPoints[0].x, y: staticNavPoints[0].y }]);
+  }, []);
 
+  // Timer for auto-rotation
   useEffect(() => {
     if (!isPaused) {
       const intervalId = setInterval(() => {
@@ -63,224 +84,63 @@ const ImageGalleryComponent = () => {
     }
   }, [imagesLeft.length, imagesRight.length, isPaused]);
 
-  const fetchFloorMap = async (buildingId) => {
-    try {
-      const response = await fetch(
-        `https://api.capture360.ai/building/api/video-frames/plan/${buildingId}/`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (data && data.length > 0 && data[0].image) {
-        setFloorMapUrl(`https://api.capture360.ai/${data[0].image}`);
-        fetchNavigationPoints(buildingId, data[0].id);
-      } else {
-        console.warn("No floor map found for this building");
-        // Set static floor map image when API doesn't return a floor map
-        setFloorMapUrl(staticFloorMapImage);
-      }
-    } catch (error) {
-      console.error("Failed to fetch floor map:", error);
-      // Set static floor map image when API request fails
-      setFloorMapUrl(staticFloorMapImage);
-    }
-  };
-  
-  const fetchNavigationPoints = async (buildingId, floorMapId) => {
-    try {
-      const response = await fetch(
-        `https://api.capture360.ai/building/api/navigation-points/building/${buildingId}/floor/${floorMapId}/`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      if (data && data.length > 0) {
-        const normalizedPoints = data.map(point => ({
-          id: point.id,
-          x: parseFloat(point.x_position),
-          y: parseFloat(point.y_position),
-          label: point.label || "",
-          frameId: point.frame_id,
-          videoId: point.video_id
-        }));
-        
-        setNavPoints(normalizedPoints);
-        
-        if (normalizedPoints.length > 0) {
-          setUserPosition({ 
-            x: normalizedPoints[0].x, 
-            y: normalizedPoints[0].y 
-          });
-          setCurrentNavPointIndex(0);
-        }
-      } else {
-        console.warn("No navigation points found for this floor map");
-        setUserPosition({ x: 50, y: 50 });
-      }
-    } catch (error) {
-      console.error("Failed to fetch navigation points:", error);
-      setUserPosition({ x: 50, y: 50 });
-    }
-  };
-
-  const fetchImages = async (id, date, isRight) => {
-    try {
-      const frameId = dateToIdMap[date];
-      if (!frameId) {
-        console.error("No frame ID found for the selected date.");
-        return;
-      }
-
-      const response = await fetch(
-        `https://api.capture360.ai/building/api/video-frames/plan/${id}/video/${frameId}/`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-
-      const imageData = await response.json();
+  // Update user position when image changes
+  useEffect(() => {
+    if (imagesLeft[currentIndexLeft]?.navPoint) {
+      const newPosition = {
+        x: imagesLeft[currentIndexLeft].navPoint.x,
+        y: imagesLeft[currentIndexLeft].navPoint.y
+      };
       
-      if (!Array.isArray(imageData) || imageData.length === 0) {
-        console.warn(`No images found for date: ${date}`);
-        if (isRight) {
-          setImagesRight([]);
-          setCurrentIndexRight(0);
-        } else {
-          setImagesLeft([]);
-          setCurrentIndexLeft(0);
-        }
-        return;
-      }
-
-      const validImages = imageData.filter(
-        (image) => image && image.image
-      ).map((image) => {
-        const matchingNavPoint = navPoints.find(point => 
-          point.frameId === image.id
+      setUserPosition(newPosition);
+      
+      // Add to visited positions for line graph
+      setVisitedPositions(prev => {
+        // Check if this position is significantly different from the last one
+        const lastPos = prev[prev.length - 1];
+        const distance = Math.sqrt(
+          Math.pow(lastPos.x - newPosition.x, 2) + 
+          Math.pow(lastPos.y - newPosition.y, 2)
         );
         
-        return {
-          ...image,
-          navPoint: matchingNavPoint ? {
-            x: matchingNavPoint.x,
-            y: matchingNavPoint.y,
-            label: matchingNavPoint.label
-          } : null
-        };
+        // Only add if it's a new position (distance > 1)
+        if (distance > 1) {
+          return [...prev, newPosition];
+        }
+        return prev;
       });
-
-      if (isRight) {
-        setImagesRight(validImages);
-        setCurrentIndexRight(0);
-        
-        if (validImages[0]?.navPoint) {
-          setUserPosition({
-            x: validImages[0].navPoint.x,
-            y: validImages[0].navPoint.y
-          });
-        }
-      } else {
-        setImagesLeft(validImages);
-        setCurrentIndexLeft(0);
-        
-        if (validImages[0]?.navPoint) {
-          setUserPosition({
-            x: validImages[0].navPoint.x,
-            y: validImages[0].navPoint.y
-          });
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch images:", error);
-      if (isRight) {
-        setImagesRight([]);
-        setCurrentIndexRight(0);
-      } else {
-        setImagesLeft([]);
-        setCurrentIndexLeft(0);
-      }
-    }
-  };
-  
-  const fetchDates = async (id) => {
-    try {
-      const response = await fetch(
-        `https://api.capture360.ai/building/api/video-frames/plan/${id}/`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-        }
+      
+      // Find corresponding nav point index
+      const navPointIndex = navPoints.findIndex(
+        point => point.x === imagesLeft[currentIndexLeft].navPoint.x && 
+                point.y === imagesLeft[currentIndexLeft].navPoint.y
       );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+      
+      if (navPointIndex !== -1) {
+        setCurrentNavPointIndex(navPointIndex);
       }
-
-      const data = await response.json();
-      if (data && data.video_uploads) {
-        const dateList = data.video_uploads.map((frame) => ({
-          date: frame.upload_date || "Unknown",
-          frameId: frame.id
-        }));
-
-        const dateMap = {};
-        dateList.forEach(({ date, frameId }) => {
-          dateMap[date] = frameId;
-        });
-
-        // Set the actual dates array properly
-        const dateValues = dateList.map(({ date }) => date);
-        setDates(dateValues);
-        setDateToIdMap(dateMap);
-
-        if (dateList.length > 0) {
-          const firstDate = dateList[0].date;
-          setSelectedDateLeft(firstDate);
-          setSelectedDateRight(firstDate);
-          fetchImages(id, firstDate, false);
-          fetchImages(id, firstDate, true);
-        }
-      } else {
-        console.warn("Unexpected API response structure:", data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch dates:", error);
     }
-  };
+  }, [currentIndexLeft, imagesLeft, navPoints]);
 
   const handleDateChangeLeft = (event) => {
     const newDate = event.target.value;
     setSelectedDateLeft(newDate);
-    fetchImages(id, newDate, false);
+    // In a real app, you would fetch images for this date
+    // For now, we'll just randomize the order of static images
+    setImagesLeft([...staticImages].sort(() => Math.random() - 0.5));
+    setCurrentIndexLeft(0);
+    // Reset visited positions for the new date
+    const firstPoint = staticNavPoints[0];
+    setVisitedPositions([{ x: firstPoint.x, y: firstPoint.y }]);
   };
 
   const handleDateChangeRight = (event) => {
     const newDate = event.target.value;
     setSelectedDateRight(newDate);
-    fetchImages(id, newDate, true);
+    // In a real app, you would fetch images for this date
+    // For now, we'll just randomize the order of static images
+    setImagesRight([...staticImages].sort(() => Math.random() - 0.5));
+    setCurrentIndexRight(0);
   };
 
   const handleNextLeft = () => {
@@ -291,17 +151,38 @@ const ImageGalleryComponent = () => {
     setCurrentIndexRight(nextRightIndex);
     
     if (imagesLeft[nextLeftIndex]?.navPoint) {
-      setUserPosition({
+      const newPosition = {
         x: imagesLeft[nextLeftIndex].navPoint.x,
         y: imagesLeft[nextLeftIndex].navPoint.y
+      };
+      
+      setUserPosition(newPosition);
+      
+      // Add to visited positions for line graph
+      setVisitedPositions(prev => {
+        const lastPos = prev[prev.length - 1];
+        const distance = Math.sqrt(
+          Math.pow(lastPos.x - newPosition.x, 2) + 
+          Math.pow(lastPos.y - newPosition.y, 2)
+        );
+        
+        if (distance > 1) {
+          return [...prev, newPosition];
+        }
+        return prev;
       });
     } else if (navPoints.length > 0) {
       const nextPointIndex = (currentNavPointIndex + 1) % navPoints.length;
-      setUserPosition({
+      const newPosition = {
         x: navPoints[nextPointIndex].x,
         y: navPoints[nextPointIndex].y
-      });
+      };
+      
+      setUserPosition(newPosition);
       setCurrentNavPointIndex(nextPointIndex);
+      
+      // Add to visited positions
+      setVisitedPositions(prev => [...prev, newPosition]);
     }
   };
 
@@ -313,17 +194,38 @@ const ImageGalleryComponent = () => {
     setCurrentIndexRight(prevRightIndex);
     
     if (imagesLeft[prevLeftIndex]?.navPoint) {
-      setUserPosition({
+      const newPosition = {
         x: imagesLeft[prevLeftIndex].navPoint.x,
         y: imagesLeft[prevLeftIndex].navPoint.y
+      };
+      
+      setUserPosition(newPosition);
+      
+      // Add to visited positions for line graph
+      setVisitedPositions(prev => {
+        const lastPos = prev[prev.length - 1];
+        const distance = Math.sqrt(
+          Math.pow(lastPos.x - newPosition.x, 2) + 
+          Math.pow(lastPos.y - newPosition.y, 2)
+        );
+        
+        if (distance > 1) {
+          return [...prev, newPosition];
+        }
+        return prev;
       });
     } else if (navPoints.length > 0) {
       const prevPointIndex = (currentNavPointIndex - 1 + navPoints.length) % navPoints.length;
-      setUserPosition({
+      const newPosition = {
         x: navPoints[prevPointIndex].x,
         y: navPoints[prevPointIndex].y
-      });
+      };
+      
+      setUserPosition(newPosition);
       setCurrentNavPointIndex(prevPointIndex);
+      
+      // Add to visited positions
+      setVisitedPositions(prev => [...prev, newPosition]);
     }
   };
 
@@ -331,68 +233,82 @@ const ImageGalleryComponent = () => {
     setIsPaused((prevIsPaused) => !prevIsPaused);
   };
 
-  const handleImageClick = () => {
-    setIsPaused(true);
-  };
-
-  // Updated to use camera rotation
-  const updateUserPositionByAngle = (angleInDegrees) => {
-    setUserPosition(prev => {
-      // Use camera Y rotation as the base angle
-      const adjustedAngle = (angleInDegrees + cameraYRotation) % 360;
-      const radians = (adjustedAngle * Math.PI) / 180;
-      const speed = 5; // Adjust for movement sensitivity
-  
-      const dx = Math.cos(radians) * speed;
-      const dy = Math.sin(radians) * speed;
-  
-      const newX = Math.max(0, Math.min(100, prev.x + dx));
-      const newY = Math.max(0, Math.min(100, prev.y + dy));
-  
-      return { x: newX, y: newY };
-    });
-  };
-  
-  // Update to directly use camera rotation
-  const updateFloorMapOrientation = (direction, cameraRotation) => {
+  // Modified to accept side parameter and update the correct camera angle state
+  const updateFloorMapOrientation = (direction, cameraRotation, side = 'left') => {
     if (cameraRotation !== undefined) {
-      // For full 360-degree rotation based on camera
       setFloorMapRotation(cameraRotation);
-      setIndicatorRotation(cameraRotation);
-    } else if (direction) {
-      // Discrete rotation for specific directions - fallback
-      let newRotation = floorMapRotation;
+      // Update torch rotation to match camera rotation
+      setTorchRotation(cameraRotation);
       
+      // Update the appropriate camera angle state based on which side is active
+      if (side === 'left') {
+        setLeftCameraAngle(cameraRotation);
+      } else {
+        setRightCameraAngle(cameraRotation);
+      }
+    } else {
       switch (direction) {
         case "left":
-          newRotation = floorMapRotation - 20;
+          setFloorMapRotation(prev => (prev - 5) % 360);
+          setTorchRotation(prev => (prev - 5) % 360);
           break;
         case "right":
-          newRotation = floorMapRotation + 20;
-          break;
-        case "up":
-          newRotation = floorMapRotation - 20;
-          break;
-        case "down":
-          newRotation = floorMapRotation + 20;
+          setFloorMapRotation(prev => (prev + 5) % 360);
+          setTorchRotation(prev => (prev + 5) % 360);
           break;
         default:
-          return;
+          break;
       }
-      
-      newRotation = (newRotation + 360) % 360;
-      setFloorMapRotation(newRotation);
-      setIndicatorRotation(newRotation);
     }
   };
-  
-  // New handler for camera rotation updates from VR scene
-  const handleCameraRotationUpdate = (rotationY) => {
-    setCameraYRotation(rotationY);
-    setIndicatorRotation(rotationY);
+
+  const updateUserPosition = (direction, distance = 2) => {
+    setUserPosition(prev => {
+      const radians = (floorMapRotation * Math.PI) / 180;
+      let dx = 0, dy = 0;
+      
+      if (direction === "up") {
+        dx = Math.sin(radians) * distance;
+        dy = -Math.cos(radians) * distance;
+      } else if (direction === "down") {
+        dx = -Math.sin(radians) * distance;
+        dy = Math.cos(radians) * distance;
+      } else if (direction === "left") {
+        dx = -Math.cos(radians) * distance;
+        dy = -Math.sin(radians) * distance;
+      } else if (direction === "right") {
+        dx = Math.cos(radians) * distance;
+        dy = Math.sin(radians) * distance;
+      }
+      
+      const newPosition = {
+        x: Math.max(0, Math.min(100, prev.x + dx)),
+        y: Math.max(0, Math.min(100, prev.y + dy))
+      };
+      
+      // Add to visited positions for line graph
+      setVisitedPositions(prevPositions => {
+        const lastPos = prevPositions[prevPositions.length - 1];
+        const posDistance = Math.sqrt(
+          Math.pow(lastPos.x - newPosition.x, 2) + 
+          Math.pow(lastPos.y - newPosition.y, 2)
+        );
+        
+        // Only add if moved a significant distance
+        if (posDistance > 1) {
+          return [...prevPositions, newPosition];
+        }
+        return prevPositions;
+      });
+      
+      return newPosition;
+    });
   };
 
-  const FloorMapOverlay = ({ rotation, userPosition }) => {
+  const FloorMapOverlay = ({ rotation, userPosition, side }) => {
+    // Get the correct camera angle based on which side this overlay belongs to
+    const currentCameraAngle = side === 'left' ? leftCameraAngle : rightCameraAngle;
+    
     const mapContainerStyle = {
       position: 'absolute',
       top: '20px',
@@ -406,73 +322,74 @@ const ImageGalleryComponent = () => {
       backgroundColor: 'white',
       boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
     };
-  
+
     const mapStyle = {
       width: '100%',
       height: '100%',
       objectFit: 'cover',
       transition: 'transform 0.2s ease-out',
     };
-  
+
     const userPositionStyle = {
       position: 'absolute',
       left: `${userPosition.x}%`,
       top: `${userPosition.y}%`,
-      width: '10px',
-      height: '10px',
+      width: '8px',
+      height: '8px',
       borderRadius: '50%',
       backgroundColor: 'red',
       transform: 'translate(-50%, -50%)',
       boxShadow: '0 0 0 2px white',
       zIndex: 101,
     };
-  
-    const directionIndicatorStyle = {
-      position: 'absolute',
-      left: `${userPosition.x}%`,
-      top: `${userPosition.y}%`,
-      width: '30px',
-      height: '30px',
-      background: 'radial-gradient(rgba(255, 255, 0, 0.2), rgba(255, 255, 0, 0.6))',
-      clipPath: 'polygon(50% 0%, 100% 100%, 0% 100%)',
-      transform: `translate(-50%, -100%) rotate(${indicatorRotation}deg)`,
-      transformOrigin: 'center bottom',
-      pointerEvents: 'none',
-      zIndex: 102,
-      transition: 'transform 0.2s ease-out, left 0.2s ease, top 0.2s ease',
-      filter: 'drop-shadow(0 0 8px rgba(255, 255, 0, 0.4))',
-      opacity: 0.85,
+
+    // Updated torch light indicator component that stays in place and only rotates
+    const TorchLightIndicator = () => {
+      return (
+        <div
+          style={{
+            position: 'absolute',
+            left: `${userPosition.x}%`,
+            top: `${userPosition.y}%`,
+            width: '0',
+            height: '0',
+            zIndex: 103,
+          }}
+        >
+          <svg 
+            width="60" 
+            height="60" 
+            viewBox="0 0 60 60" 
+            style={{ 
+              transform: `translate(-30px, -30px) rotate(${rotation}deg)`,
+              transformOrigin: 'center',
+              position: 'absolute',
+            }}
+          >
+            {/* Torch light cone */}
+            <defs>
+              <radialGradient id="torchGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" stopColor="rgba(255,255,150,0.9)" />
+                <stop offset="70%" stopColor="rgba(255,200,50,0.5)" />
+                <stop offset="100%" stopColor="rgba(255,150,0,0)" />
+              </radialGradient>
+            </defs>
+            
+            {/* Light cone */}
+            <path 
+              d="M30,30 L10,0 A40,40 0 0,1 50,0 Z" 
+              fill="url(#torchGradient)" 
+              opacity="0.8"
+            />
+            
+            {/* Central dot (user position indicator) */}
+            <circle cx="30" cy="30" r="5" fill="#FFD700" />
+            <circle cx="30" cy="30" r="3" fill="white" />
+          </svg>
+        </div>
+      );
     };
-  
-    const renderDottedLinePath = () => {
-      if (!navPoints || navPoints.length < 2) return null;
-  
-      const lines = [];
-  
-      for (let i = 0; i < navPoints.length - 1; i++) {
-        const from = navPoints[i];
-        const to = navPoints[i + 1];
-  
-        const lineStyle = {
-          position: 'absolute',
-          left: `${from.x}%`,
-          top: `${from.y}%`,
-          width: '2px',
-          height: `${Math.hypot(to.x - from.x, to.y - from.y)}%`,
-          backgroundImage: 'linear-gradient(to bottom, yellow 30%, transparent 30%)',
-          backgroundSize: '2px 6px',
-          transformOrigin: 'top left',
-          transform: `translate(-50%, -50%) rotate(${Math.atan2(to.y - from.y, to.x - from.x) * 180 / Math.PI}deg)`,
-          zIndex: 98,
-          pointerEvents: 'none',
-        };
-  
-        lines.push(<div key={`line-${i}`} style={lineStyle}></div>);
-      }
-  
-      return lines;
-    };
-  
+    
     const renderNavPoints = () => {
       return navPoints.map((point, index) => {
         const navPointStyle = {
@@ -486,40 +403,104 @@ const ImageGalleryComponent = () => {
           transform: 'translate(-50%, -50%)',
           zIndex: 100,
         };
-  
-        return (
-          <div
-            key={index}
-            style={navPointStyle}
-            title={point.label || `Point ${index + 1}`}
-          ></div>
-        );
+        
+        return <div key={index} style={navPointStyle} title={point.label || `Point ${index+1}`}></div>;
       });
     };
-  
+
+    // Render the line graph (path) of visited positions
+    const renderLineGraph = () => {
+      if (!showLineGraphOnMap || visitedPositions.length < 2) return null;
+      
+      return (
+        <svg 
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 98,
+            pointerEvents: 'none',
+          }}
+        >
+          <defs>
+            <marker
+              id="dot"
+              viewBox="0 0 10 10"
+              refX="5"
+              refY="5"
+              markerWidth="5"
+              markerHeight="5">
+              <circle cx="5" cy="5" r="3" fill="orange" />
+            </marker>
+          </defs>
+          
+          {/* Draw the path line */}
+          <polyline
+            points={visitedPositions.map(pos => `${pos.x}%, ${pos.y}%`).join(' ')}
+            fill="none"
+            stroke="orange"
+            strokeWidth="2"
+            strokeDasharray="3,3"
+            markerMid="url(#dot)"
+            markerStart="url(#dot)"
+            markerEnd="url(#dot)"
+          />
+        </svg>
+      );
+    };
+
+    // Style for the angle display container below the map
+    const angleDisplayContainerStyle = {
+      position: 'absolute',
+      top: '175px',  // Position it below the map
+      right: '20px',
+      width: '150px',
+      textAlign: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.7)',
+      color: 'white',
+      padding: '5px 0',
+      borderRadius: '0 0 5px 5px',
+      fontSize: '12px',
+      fontWeight: 'bold',
+    };
+
     return (
-      <div style={mapContainerStyle}>
-        {floorMapUrl ? (
+      <>
+        <div style={mapContainerStyle}>
           <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ width: '100%', height: '100%', position: 'absolute' }}>
-              <img src={floorMapUrl} alt="Floor Map" style={mapStyle} />
+            <div style={{
+              width: '100%', 
+              height: '100%', 
+              position: 'absolute',
+              transform: `rotate(${-rotation}deg)`,
+            }}>
+              <img 
+                src={floorMapUrl} 
+                alt="Floor Map" 
+                style={mapStyle} 
+              />
               {renderNavPoints()}
-              {renderDottedLinePath()}
             </div>
+            {/* Line graph showing the path */}
+            {renderLineGraph()}
+            {/* User position dot */}
             <div style={userPositionStyle}></div>
-            <div style={directionIndicatorStyle}></div>
+            {/* Torch light indicator */}
+            <TorchLightIndicator />
           </div>
-        ) : (
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <img src={staticFloorMapImage} alt="Default Floor Map" style={mapStyle} />
-          </div>
-        )}
-      </div>
+        </div>
+        
+        {/* Rotation angle display - Now showing the actual current camera angle */}
+        <div style={angleDisplayContainerStyle}>
+          Rotation: {Math.round(currentCameraAngle)}°
+        </div>
+      </>
     );
   };
   
-  
-  const renderImage = (imageObj) => {
+  const renderImage = (imageObj, side) => {
     if (!imageObj || typeof imageObj !== 'object' || !imageObj.image) {
       return (
         <div
@@ -540,7 +521,8 @@ const ImageGalleryComponent = () => {
       );
     }
 
-    const url = `https://api.capture360.ai/${imageObj.image}`;
+    // Use the actual image directly rather than constructing a URL
+    const imageUrl = imageObj.image;
     const timestamp = imageObj.timestamp || "Unknown Date";
 
     return (
@@ -565,18 +547,21 @@ const ImageGalleryComponent = () => {
             backgroundColor: "rgba(0, 0, 0, 0.5)",
             color: "white",
             borderRadius: "4px",
+            zIndex: 10,
           }}
         >
           {timestamp}
         </Typography>
         <VRScene 
-          imageUrl={url} 
+          imageUrl={imageUrl} 
           arrowDirection={arrowDirection} 
           setArrowDirection={setArrowDirection} 
           updateFloorMapOrientation={updateFloorMapOrientation}
-          updateUserPositionByAngle={updateUserPositionByAngle}
+          updateUserPosition={updateUserPosition}
           setCursorValues={setCursorValues}
-          onCameraRotationUpdate={handleCameraRotationUpdate}
+          side={side}
+          torchRotation={torchRotation}
+          setTorchRotation={setTorchRotation}
         />
       </div>
     );
@@ -594,12 +579,10 @@ const ImageGalleryComponent = () => {
           position: "relative",
         }}
       >
-        
-        {/* Split View (only view available now) */}
+        {/* Split View */}
         <div style={{ display: 'flex', width: '100%', height: '100%' }}>
           <div style={{ flex: 1, padding: '10px', position: 'relative' }}>
             <Typography variant="h6">Select Date</Typography>
-            {/* Fixed Select component for left side */}
             <Select
               value={selectedDateLeft}
               onChange={handleDateChangeLeft}
@@ -626,17 +609,17 @@ const ImageGalleryComponent = () => {
               <Button onClick={handlePause}>{isPaused ? 'Play' : 'Pause'}</Button>
               <Button onClick={handleNextLeft}>Next</Button>
             </ButtonGroup>
-            <div style={{ height: '70vh', marginTop: '10px', position: 'relative' }}>
-              {renderImage(imagesLeft[currentIndexLeft])}
+            <div style={{ height: '80vh', marginTop: '10px', position: 'relative' }}>
+              {renderImage(imagesLeft[currentIndexLeft], 'left')}
               <FloorMapOverlay 
                 rotation={floorMapRotation} 
                 userPosition={userPosition}
+                side='left'
               />
             </div>
           </div>
           <div style={{ flex: 1, padding: '10px', position: 'relative' }}>
             <Typography variant="h6">Select Date</Typography>
-            {/* Fixed Select component for right side */}
             <Select
               value={selectedDateRight}
               onChange={handleDateChangeRight}
@@ -655,14 +638,32 @@ const ImageGalleryComponent = () => {
                 <MenuItem disabled>No dates available</MenuItem>
               )}
             </Select>
-            <div style={{ height: '70vh', marginTop: '10px', position: 'relative' }}>
-              {renderImage(imagesRight[currentIndexRight])}
+            <div style={{ height: '80vh', marginTop: '10px', position: 'relative' }}>
+              {renderImage(imagesRight[currentIndexRight], 'right')}
               <FloorMapOverlay 
                 rotation={floorMapRotation} 
                 userPosition={userPosition}
+                side='right'
               />
             </div>
           </div>
+        </div>
+
+        {/* Toggle for line graph visibility */}
+        <div style={{
+          position: 'absolute',
+          bottom: '60px',
+          left: '20px',
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          color: 'white',
+          padding: '10px',
+          borderRadius: '5px',
+          zIndex: 1000,
+          cursor: 'pointer',
+        }} onClick={() => setShowLineGraphOnMap(!showLineGraphOnMap)}>
+          <Typography variant="body2">
+            {showLineGraphOnMap ? 'Hide Path' : 'Show Path'}
+          </Typography>
         </div>
 
         {/* Display cursor movement values */}
@@ -679,9 +680,6 @@ const ImageGalleryComponent = () => {
           <Typography variant="body2">
             Cursor Position: X: {cursorValues.x.toFixed(2)}, Y: {cursorValues.y.toFixed(2)}
           </Typography>
-          <Typography variant="body2">
-            Camera Rotation: {cameraYRotation.toFixed(1)}°
-          </Typography>
         </div>
       </div>
     </ThemeProvider>
@@ -692,12 +690,14 @@ const VRScene = ({
   imageUrl, 
   arrowDirection, 
   setArrowDirection, 
-  updateFloorMapOrientation, 
-  updateUserPositionByAngle, 
   setCursorValues,
-  onCameraRotationUpdate
+  side,
+  torchRotation,
+  setTorchRotation,
+  currentCameraAngle,
+  isRotating,
+  toggleRotation
 }) => {
-  const [skySrc, setSkySrc] = useState('');
   const vrSceneRef = useRef(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0, z: -2 });
   const cameraRef = useRef(null);
@@ -705,226 +705,345 @@ const VRScene = ({
   const [isMoving, setIsMoving] = useState(false);
   const [movementDirection, setMovementDirection] = useState(null);
   const lastMousePosition = useRef({ x: 0, y: 0 });
-  const animationFrameRef = useRef(null);
-
+  const [sceneLoaded, setSceneLoaded] = useState(false);
+  // Track the current rotation angle
+  const [rotationAngle, setRotationAngle] = useState(0);
+  const frameId = useRef(null);
+  
+  // Initialize Three.js scene once
   useEffect(() => {
-    const fetchImages = async () => {
-      try {
-        const response = await fetch(imageUrl, {
-          headers: {
-            Accept: "application/json",
-          },
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        const blob = await response.blob();
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setSkySrc(reader.result);
-        };
-        reader.readAsDataURL(blob);
-      } catch (error) {
-        console.error('Error fetching image:', error);
-        setSkySrc(imageUrl);
-      }
-    };
-    fetchImages();
-  }, [imageUrl]);
-
-  // Track camera rotation continuously
-  useEffect(() => {
-    if (vrSceneRef.current) {
-      const scene = vrSceneRef.current.querySelector('a-scene');
-      if (scene) {
-        scene.addEventListener('loaded', () => {
-          const camera = scene.querySelector('a-camera');
-          if (camera) {
-            cameraRef.current = camera;
-            
-            // Set up continuous monitoring of camera rotation
-            const updateCameraRotation = () => {
-              if (cameraRef.current) {
-                // Access the Three.js object directly for more accurate rotation
-                const object3D = cameraRef.current.object3D;
-                if (object3D) {
-                  // Convert rotation to degrees for easier use
-                  const rotation = {
-                    x: THREE.MathUtils.radToDeg(object3D.rotation.x),
-                    y: THREE.MathUtils.radToDeg(object3D.rotation.y),
-                    z: THREE.MathUtils.radToDeg(object3D.rotation.z)
-                  };
-                  
-                  setCameraRotation(rotation);
-                  
-                  // Normalize Y rotation to 0-360 range for consistent direction
-                  let normalizedY = (rotation.y + 360) % 360;
-                  
-                  // Update parent components with camera rotation
-                  if (updateFloorMapOrientation) {
-                    updateFloorMapOrientation(null, normalizedY);
-                  }
-                  
-                  if (onCameraRotationUpdate) {
-                    onCameraRotationUpdate(normalizedY);
-                  }
-                }
-              }
-              animationFrameRef.current = requestAnimationFrame(updateCameraRotation);
-            };
-            
-            updateCameraRotation();
-          }
-        });
-      }
+    if (!vrSceneRef.current) return;
+    
+    // Create scene
+    const scene = new THREE.Scene();
+    
+    // Create camera
+    const camera = new THREE.PerspectiveCamera(75, vrSceneRef.current.clientWidth / vrSceneRef.current.clientHeight, 0.1, 1000);
+    camera.position.set(0, 0, 0);
+    cameraRef.current = camera;
+    
+    // Create renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(vrSceneRef.current.clientWidth, vrSceneRef.current.clientHeight);
+    
+    // Clean up any previous canvas
+    while (vrSceneRef.current.firstChild) {
+      vrSceneRef.current.removeChild(vrSceneRef.current.firstChild);
     }
     
+    vrSceneRef.current.appendChild(renderer.domElement);
+    
+    // Create sphere geometry for 360 image
+    const geometry = new THREE.SphereGeometry(500, 60, 40);
+    geometry.scale(-1, 1, 1); // Invert the sphere so the texture renders on the inside
+    
+    // Load the texture
+    const texture = new THREE.TextureLoader().load(imageUrl, () => {
+      setSceneLoaded(true);
+    });
+    
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const sphere = new THREE.Mesh(geometry, material);
+    scene.add(sphere);
+    
+    // Add cursor/reticle
+    const cursorGeometry = new THREE.RingGeometry(0.02, 0.03, 32);
+    const cursorMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    const cursor = new THREE.Mesh(cursorGeometry, cursorMaterial);
+    cursor.position.set(0, 0, -2);
+    camera.add(cursor);
+    scene.add(camera);
+    
+    // Navigation arrows
+    const createArrow = (direction) => {
+      const arrowGeometry = new THREE.ConeGeometry(0.1, 0.3, 32);
+      const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.7 });
+      const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
+      
+      // Position and rotate based on direction
+      switch (direction) {
+        case 'up':
+          arrow.position.set(0, -0.5, -2);
+          break;
+        case 'down':
+          arrow.position.set(0, 0.5, -2);
+          arrow.rotation.z = Math.PI;
+          break;
+        case 'left':
+          arrow.position.set(0.5, 0, -2);
+          arrow.rotation.z = -Math.PI / 2;
+          break;
+        case 'right':
+          arrow.position.set(-0.5, 0, -2);
+          arrow.rotation.z = Math.PI / 2;
+          break;
+      }
+      
+      camera.add(arrow);
+      return arrow;
+    };
+    
+    // Create navigation arrows
+    const upArrow = createArrow('up');
+    const downArrow = createArrow('down');
+    const leftArrow = createArrow('left');
+    const rightArrow = createArrow('right');
+    
+    // Animation loop
+    const animate = () => {
+      frameId.current = requestAnimationFrame(animate);
+      
+      // Handle continuous rotation if enabled
+      if (isRotating) {
+        // Rotate camera by 0.5 degrees per frame
+        camera.rotation.y += THREE.MathUtils.degToRad(0.5);
+        
+        // Calculate rotation in degrees (0-360)
+        const degrees = (camera.rotation.y * 180 / Math.PI) % 360;
+        const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
+        
+        // Update rotation angle state
+        setRotationAngle(normalizedDegrees);
+        
+        // Update torch rotation only
+        setTorchRotation(normalizedDegrees);
+      }
+      
+      // Handle continuous movement if enabled
+      if (isMoving && movementDirection) {
+        // We removed the updateUserPosition call here
+      }
+      
+      renderer.render(scene, camera);
+    };
+    
+    animate();
+    
+    // Handle window resize
+    const handleResize = () => {
+      if (!vrSceneRef.current) return;
+      
+      camera.aspect = vrSceneRef.current.clientWidth / vrSceneRef.current.clientHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(vrSceneRef.current.clientWidth, vrSceneRef.current.clientHeight);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    // Initialize camera rotation to match current angle
+    camera.rotation.y = THREE.MathUtils.degToRad(currentCameraAngle || 0);
+    
+    // Cleanup function
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+      cancelAnimationFrame(frameId.current);
+      window.removeEventListener('resize', handleResize);
+      renderer.dispose();
+      geometry.dispose();
+      material.dispose();
+      cursorGeometry.dispose();
+      cursorMaterial.dispose();
+    };
+  }, [imageUrl, isRotating, side, currentCameraAngle, setTorchRotation]);
+  
+  // Mouse and touch event handlers
+  useEffect(() => {
+    if (!vrSceneRef.current || !cameraRef.current) return;
+    
+    const camera = cameraRef.current;
+    
+    const handleMouseDown = (e) => {
+      lastMousePosition.current = { x: e.clientX, y: e.clientY };
+    };
+    
+    const handleMouseMove = (e) => {
+      if (e.buttons === 1 && !isRotating) { // Left mouse button down and not in auto-rotation mode
+        const deltaX = e.clientX - lastMousePosition.current.x;
+        const deltaY = e.clientY - lastMousePosition.current.y;
+        
+        // Only adjust if there's significant movement
+        if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+          // Convert mouse movement to rotation
+          camera.rotation.y -= deltaX * 0.005;
+          camera.rotation.x -= deltaY * 0.005;
+          
+          // Clamp vertical rotation
+          camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+          
+          // Update rotation state
+          setCameraRotation({
+            x: camera.rotation.x,
+            y: camera.rotation.y,
+            z: camera.rotation.z,
+          });
+          
+          // Calculate rotation in degrees (0-360)
+          const degrees = (camera.rotation.y * 180 / Math.PI) % 360;
+          const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
+          
+          // Update torch rotation only
+          setRotationAngle(normalizedDegrees);
+          setTorchRotation(normalizedDegrees);
+        }
+        
+        lastMousePosition.current = { x: e.clientX, y: e.clientY };
+      }
+      
+      // Update cursor values for display
+      const rect = vrSceneRef.current.getBoundingClientRect();
+      const normalizedX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      const normalizedY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      setCursorValues({ x: normalizedX, y: normalizedY });
+      
+      // Determine if cursor is over a navigation arrow
+      // Use normalized position to check if cursor is in arrow regions
+      const threshold = 0.3;
+      let newDirection = null;
+      
+      if (normalizedY > threshold) newDirection = "up";
+      else if (normalizedY < -threshold) newDirection = "down";
+      else if (normalizedX > threshold) newDirection = "right";
+      else if (normalizedX < -threshold) newDirection = "left";
+      
+      if (newDirection !== arrowDirection) {
+        setArrowDirection(newDirection);
       }
     };
-  }, [vrSceneRef.current, updateFloorMapOrientation, onCameraRotationUpdate]);
-
-  useEffect(() => {
-    if (isMoving && movementDirection) {
-      const moveInterval = setInterval(() => {
-        updateUserPositionByAngle(movementDirection, 1);
-      }, 100);
-      
-      return () => clearInterval(moveInterval);
-    }
-  }, [isMoving, movementDirection, updateUserPositionByAngle]);
-
-  const handleMouseMove = (event) => {
-    const x = (event.clientX / window.innerWidth) * 2 - 1;
-    const y = -(event.clientY / window.innerHeight) * 2 + 1;
-    const z = -2;
-
-    const movementX = event.clientX - lastMousePosition.current.x;
-    const movementY = event.clientY - lastMousePosition.current.y;
     
-    lastMousePosition.current = { x: event.clientX, y: event.clientY };
-
-    setCursorPos({ x, y, z });
-    setCursorValues({ x, y });
-
-    // Update movement direction based on mouse movement
-    if (event.buttons === 1) { // Check if mouse button is pressed
-      if (Math.abs(movementX) > Math.abs(movementY)) {
-        const direction = movementX > 0 ? "right" : "left";
-        setArrowDirection(direction);
-      } else {
-        const direction = movementY > 0 ? "down" : "up";
-        setArrowDirection(direction);
+    const handleClick = () => {
+      // Handle click on navigation arrows - functionality maintained but no action taken
+      if (arrowDirection) {
+        // We removed the updateUserPosition call here
       }
-    }
-  };
-
-  const handleMouseDown = (event) => {
-    setIsMoving(true);
-    lastMousePosition.current = { x: event.clientX, y: event.clientY };
+    };
     
-    // Determine initial movement direction
-    if (arrowDirection) {
-      let angleInDegrees;
-      
-      // Convert direction to angle, considering camera rotation
-      switch (arrowDirection) {
-        case "up":
-          angleInDegrees = 0;
+    const handleKeyDown = (e) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          setMovementDirection('up');
+          setIsMoving(true);
           break;
-        case "right":
-          angleInDegrees = 90;
+        case 'ArrowDown':
+          setMovementDirection('down');
+          setIsMoving(true);
           break;
-        case "down":
-          angleInDegrees = 180;
+        case 'ArrowLeft':
+          setMovementDirection('left');
+          setIsMoving(true);
           break;
-        case "left":
-          angleInDegrees = 270;
+        case 'ArrowRight':
+          setMovementDirection('right');
+          setIsMoving(true);
           break;
-        default:
-          angleInDegrees = 0;
+        case 'r':
+          // Keep the rotation toggle functionality
+          toggleRotation();
+          break;
       }
-      
-      setMovementDirection(angleInDegrees);
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIsMoving(false);
-    setMovementDirection(null);
+    };
+    
+    const handleKeyUp = (e) => {
+      setIsMoving(false);
+    };
+    
+    // Touch event handlers for mobile
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 1) {
+        lastMousePosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+    
+    const handleTouchMove = (e) => {
+      if (e.touches.length === 1 && !isRotating) {
+        const deltaX = e.touches[0].clientX - lastMousePosition.current.x;
+        const deltaY = e.touches[0].clientY - lastMousePosition.current.y;
+        
+        // Convert touch movement to rotation
+        camera.rotation.y -= deltaX * 0.005;
+        camera.rotation.x -= deltaY * 0.005;
+        
+        // Clamp vertical rotation
+        camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
+        
+        // Update rotation state
+        setCameraRotation({
+          x: camera.rotation.x,
+          y: camera.rotation.y,
+          z: camera.rotation.z,
+        });
+        
+        // Calculate rotation in degrees (0-360)
+        const degrees = (camera.rotation.y * 180 / Math.PI) % 360;
+        const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
+        
+        // Update torch rotation only
+        setRotationAngle(normalizedDegrees);
+        setTorchRotation(normalizedDegrees);
+        
+        lastMousePosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      }
+    };
+    
+    // Attach event listeners
+    vrSceneRef.current.addEventListener('mousedown', handleMouseDown);
+    vrSceneRef.current.addEventListener('mousemove', handleMouseMove);
+    vrSceneRef.current.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keyup', handleKeyUp);
+    vrSceneRef.current.addEventListener('touchstart', handleTouchStart);
+    vrSceneRef.current.addEventListener('touchmove', handleTouchMove);
+    
+    // Cleanup function
+    return () => {
+      if (vrSceneRef.current) {
+        vrSceneRef.current.removeEventListener('mousedown', handleMouseDown);
+        vrSceneRef.current.removeEventListener('mousemove', handleMouseMove);
+        vrSceneRef.current.removeEventListener('click', handleClick);
+        vrSceneRef.current.removeEventListener('touchstart', handleTouchStart);
+        vrSceneRef.current.removeEventListener('touchmove', handleTouchMove);
+      }
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [arrowDirection, setArrowDirection, setCursorValues, isRotating, side, setTorchRotation]);
+  
+  const loadingOverlayStyles = {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    color: "white",
+    fontSize: "24px",
+    zIndex: 1001,
   };
   
-  const ArrowComponent = ({ direction }) => {
-    const arrowStyle = {
-      position: 'absolute',
-      top: `${cursorPos.y * 0 + 50}%`,
-      left: `${cursorPos.x * 0 + 50}%`,
-      zIndex: 10,
-      fontSize: '24px',
-      fontWeight: 'bold',
-      backgroundColor: 'transparent',
-      pointerEvents: 'none',
-      color: isMoving ? 'red' : 'white',
-    };
-
-    const arrowMap = {
-      up: "↑",
-      down: "↓",
-      left: "←",
-      right: "→"
-    };
-
-    return (
-      <div style={arrowStyle}>
-        {arrowMap[direction]}
-      </div>
-    );
-  };
-
   return (
-    <div
-      ref={vrSceneRef}
-      onMouseMove={handleMouseMove}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
-      style={{ height: "100%", width: "100%", position: "relative", cursor: "none" }}
-    >
-      <a-scene
-        embedded
-        vr-mode-ui="enabled: true"
-        style={{ height: '100%', width: '100%' }}
-      >
-        <a-sky src={skySrc} rotation="0 0 0"></a-sky>
-        <a-camera position="0 1.6 0">
-          <a-cursor color="white" fuse="true" fuse-timeout="500"></a-cursor>
-        </a-camera>
-        <a-light type="ambient" color="#888"></a-light>
-        <a-light type="directional" position="-1 1 0" color="#FFF"></a-light>
-        <a-image
-          src={arrowimg}
-          position={`${cursorPos.x * 3} ${cursorPos.y * 3} ${cursorPos.z}`}
-          width="0.5" height="0.5"
-          rotation="0 0 0"
-          look-at="[camera]"
-        ></a-image>
-      </a-scene>
-
-      <ArrowComponent direction={arrowDirection} />
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div ref={vrSceneRef} style={{ width: "100%", height: "100%" }}></div>
       
+      {!sceneLoaded && (
+        <div style={loadingOverlayStyles}>
+          Loading 360° View...
+        </div>
+      )}
+      
+      {/* Rotation indicator */}
       <div style={{
-        position: 'absolute',
-        bottom: '10px',
-        left: '10px',
-        backgroundColor: 'rgba(0,0,0,0.5)',
-        color: 'white',
-        padding: '5px',
-        borderRadius: '5px',
-        fontSize: '12px'
+        position: "absolute",
+        top: "10px",
+        left: "10px",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        color: "white",
+        padding: "5px 10px",
+        borderRadius: "4px",
+        fontSize: "14px",
       }}>
-        Click and drag to look around. Click and hold to move in that direction.
+        Angle: {Math.round(rotationAngle)}°
       </div>
     </div>
   );
