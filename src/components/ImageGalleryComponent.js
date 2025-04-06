@@ -48,7 +48,6 @@ const ImageGalleryComponent = () => {
   const [selectedDateRight, setSelectedDateRight] = useState("2024-03-15");
   const [isSplitScreen, setIsSplitScreen] = useState(true);
   const [floorMapUrl, setFloorMapUrl] = useState(staticFloorMapImage);
-  const [floorMapRotation, setFloorMapRotation] = useState(0);
   const [userPosition, setUserPosition] = useState({ x: 50, y: 50 });
   const [jsonid, setJsonid] = useState(1); // Default JSON ID
   const [navPoints, setNavPoints] = useState(staticNavPoints);
@@ -61,6 +60,9 @@ const ImageGalleryComponent = () => {
   // Add current camera angle state for both sides
   const [leftCameraAngle, setLeftCameraAngle] = useState(0);
   const [rightCameraAngle, setRightCameraAngle] = useState(0);
+  const [isAutoRotationEnabled, setIsAutoRotationEnabled] = useState(true); // Enable auto-rotation by default
+  // Add active side state to track which side is currently being interacted with
+  const [activeSide, setActiveSide] = useState(null);
 
   // Initialize with static data
   useEffect(() => {
@@ -233,38 +235,25 @@ const ImageGalleryComponent = () => {
     setIsPaused((prevIsPaused) => !prevIsPaused);
   };
 
-  // Modified to accept side parameter and update the correct camera angle state
-  const updateFloorMapOrientation = (direction, cameraRotation, side = 'left') => {
-    if (cameraRotation !== undefined) {
-      setFloorMapRotation(cameraRotation);
-      // Update torch rotation to match camera rotation
-      setTorchRotation(cameraRotation);
-      
-      // Update the appropriate camera angle state based on which side is active
-      if (side === 'left') {
-        setLeftCameraAngle(cameraRotation);
-      } else {
-        setRightCameraAngle(cameraRotation);
-      }
+  // Function to update camera angle state for the appropriate side
+  const handleCameraRotationUpdate = (angle, side) => {
+    if (side === 'left') {
+      setLeftCameraAngle(angle);
     } else {
-      switch (direction) {
-        case "left":
-          setFloorMapRotation(prev => (prev - 5) % 360);
-          setTorchRotation(prev => (prev - 5) % 360);
-          break;
-        case "right":
-          setFloorMapRotation(prev => (prev + 5) % 360);
-          setTorchRotation(prev => (prev + 5) % 360);
-          break;
-        default:
-          break;
-      }
+      setRightCameraAngle(angle);
     }
+    // Update torch rotation to match camera angle
+    setTorchRotation(angle);
+  };
+
+  // Toggle auto-rotation functionality
+  const toggleAutoRotation = () => {
+    setIsAutoRotationEnabled(prev => !prev);
   };
 
   const updateUserPosition = (direction, distance = 2) => {
     setUserPosition(prev => {
-      const radians = (floorMapRotation * Math.PI) / 180;
+      const radians = (leftCameraAngle * Math.PI) / 180;
       let dx = 0, dy = 0;
       
       if (direction === "up") {
@@ -305,6 +294,36 @@ const ImageGalleryComponent = () => {
     });
   };
 
+  // Handle entering a side (mouse over)
+  const handleSideEnter = (side) => {
+    setActiveSide(side);
+  };
+
+  // Handle leaving a side (mouse out)
+  const handleSideLeave = () => {
+    // Only clear active side if we're not dragging
+    // This is important to prevent flickering when moving across sides
+    if (!isMouseDown) {
+      setActiveSide(null);
+    }
+  };
+
+  // Track mouse down state
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const handleMouseDown = () => setIsMouseDown(true);
+  const handleMouseUp = () => setIsMouseDown(false);
+
+  // Add global mouse up listener to handle cases where mouse is released outside the component
+  useEffect(() => {
+    const handleGlobalMouseUp = () => setIsMouseDown(false);
+    document.addEventListener('mouseup', handleGlobalMouseUp);
+    
+    return () => {
+      document.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, []);
+
+  // Updated FloorMapOverlay component with improved torch light rotation
   const FloorMapOverlay = ({ rotation, userPosition, side }) => {
     // Get the correct camera angle based on which side this overlay belongs to
     const currentCameraAngle = side === 'left' ? leftCameraAngle : rightCameraAngle;
@@ -321,13 +340,14 @@ const ImageGalleryComponent = () => {
       zIndex: 100,
       backgroundColor: 'white',
       boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
+      // Ensure the map is always visible
+      pointerEvents: 'none', // This prevents the map from capturing mouse events
     };
 
     const mapStyle = {
       width: '100%',
       height: '100%',
       objectFit: 'cover',
-      transition: 'transform 0.2s ease-out',
     };
 
     const userPositionStyle = {
@@ -343,7 +363,7 @@ const ImageGalleryComponent = () => {
       zIndex: 101,
     };
 
-    // Updated torch light indicator component that stays in place and only rotates
+    // Improved torch light indicator component that rotates correctly
     const TorchLightIndicator = () => {
       return (
         <div
@@ -354,6 +374,7 @@ const ImageGalleryComponent = () => {
             width: '0',
             height: '0',
             zIndex: 103,
+            transform: 'translate(0, 0)', // No transformation here
           }}
         >
           <svg 
@@ -361,14 +382,14 @@ const ImageGalleryComponent = () => {
             height="60" 
             viewBox="0 0 60 60" 
             style={{ 
-              transform: `translate(-30px, -30px) rotate(${rotation}deg)`,
+              transform: `translate(-30px, -30px) rotate(${currentCameraAngle}deg)`,
               transformOrigin: 'center',
               position: 'absolute',
             }}
           >
             {/* Torch light cone */}
             <defs>
-              <radialGradient id="torchGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+              <radialGradient id={`torchGradient-${side}`} cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
                 <stop offset="0%" stopColor="rgba(255,255,150,0.9)" />
                 <stop offset="70%" stopColor="rgba(255,200,50,0.5)" />
                 <stop offset="100%" stopColor="rgba(255,150,0,0)" />
@@ -378,7 +399,7 @@ const ImageGalleryComponent = () => {
             {/* Light cone */}
             <path 
               d="M30,30 L10,0 A40,40 0 0,1 50,0 Z" 
-              fill="url(#torchGradient)" 
+              fill={`url(#torchGradient-${side})`} 
               opacity="0.8"
             />
             
@@ -464,17 +485,19 @@ const ImageGalleryComponent = () => {
       borderRadius: '0 0 5px 5px',
       fontSize: '12px',
       fontWeight: 'bold',
+      // Ensure the angle display is always visible
+      pointerEvents: 'none', // This prevents the angle display from capturing mouse events
     };
 
     return (
       <>
         <div style={mapContainerStyle}>
           <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
+            {/* Note: Fixed the map to not rotate with the camera angle */}
             <div style={{
               width: '100%', 
               height: '100%', 
               position: 'absolute',
-              transform: `rotate(${-rotation}deg)`,
             }}>
               <img 
                 src={floorMapUrl} 
@@ -487,7 +510,7 @@ const ImageGalleryComponent = () => {
             {renderLineGraph()}
             {/* User position dot */}
             <div style={userPositionStyle}></div>
-            {/* Torch light indicator */}
+            {/* Torch light indicator - this is the only component that rotates */}
             <TorchLightIndicator />
           </div>
         </div>
@@ -556,12 +579,16 @@ const ImageGalleryComponent = () => {
           imageUrl={imageUrl} 
           arrowDirection={arrowDirection} 
           setArrowDirection={setArrowDirection} 
-          updateFloorMapOrientation={updateFloorMapOrientation}
           updateUserPosition={updateUserPosition}
           setCursorValues={setCursorValues}
           side={side}
           torchRotation={torchRotation}
           setTorchRotation={setTorchRotation}
+          onCameraRotationUpdate={(angle) => handleCameraRotationUpdate(angle, side)}
+          isAutoRotationEnabled={isAutoRotationEnabled}
+          toggleAutoRotation={toggleAutoRotation}
+          currentCameraAngle={side === 'left' ? leftCameraAngle : rightCameraAngle}
+          activeSide={activeSide}
         />
       </div>
     );
@@ -578,10 +605,16 @@ const ImageGalleryComponent = () => {
           padding: "20px",
           position: "relative",
         }}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
       >
         {/* Split View */}
         <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-          <div style={{ flex: 1, padding: '10px', position: 'relative' }}>
+          <div 
+            style={{ flex: 1, padding: '10px', position: 'relative' }}
+            onMouseEnter={() => handleSideEnter('left')}
+            onMouseLeave={handleSideLeave}
+          >
             <Typography variant="h6">Select Date</Typography>
             <Select
               value={selectedDateLeft}
@@ -612,13 +645,17 @@ const ImageGalleryComponent = () => {
             <div style={{ height: '80vh', marginTop: '10px', position: 'relative' }}>
               {renderImage(imagesLeft[currentIndexLeft], 'left')}
               <FloorMapOverlay 
-                rotation={floorMapRotation} 
+                rotation={0} // Fixed to 0 so the map doesn't rotate
                 userPosition={userPosition}
                 side='left'
               />
             </div>
           </div>
-          <div style={{ flex: 1, padding: '10px', position: 'relative' }}>
+          <div 
+            style={{ flex: 1, padding: '10px', position: 'relative' }}
+            onMouseEnter={() => handleSideEnter('right')}
+            onMouseLeave={handleSideLeave}
+          >
             <Typography variant="h6">Select Date</Typography>
             <Select
               value={selectedDateRight}
@@ -641,7 +678,7 @@ const ImageGalleryComponent = () => {
             <div style={{ height: '80vh', marginTop: '10px', position: 'relative' }}>
               {renderImage(imagesRight[currentIndexRight], 'right')}
               <FloorMapOverlay 
-                rotation={floorMapRotation} 
+                rotation={0} // Fixed to 0 so the map doesn't rotate
                 userPosition={userPosition}
                 side='right'
               />
@@ -696,7 +733,10 @@ const VRScene = ({
   setTorchRotation,
   currentCameraAngle,
   isRotating,
-  toggleRotation
+  toggleRotation,
+  updateFloorMapOrientation,
+  updateUserPositionByAngle,
+  onCameraRotationUpdate
 }) => {
   const vrSceneRef = useRef(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0, z: -2 });
@@ -707,7 +747,7 @@ const VRScene = ({
   const lastMousePosition = useRef({ x: 0, y: 0 });
   const [sceneLoaded, setSceneLoaded] = useState(false);
   // Track the current rotation angle
-  const [rotationAngle, setRotationAngle] = useState(0);
+  const [rotationAngle, setRotationAngle] = useState(currentCameraAngle || 0);
   const frameId = useRef(null);
   
   // Initialize Three.js scene once
@@ -754,40 +794,18 @@ const VRScene = ({
     camera.add(cursor);
     scene.add(camera);
     
-    // Navigation arrows
-    const createArrow = (direction) => {
-      const arrowGeometry = new THREE.ConeGeometry(0.1, 0.3, 32);
-      const arrowMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.7 });
-      const arrow = new THREE.Mesh(arrowGeometry, arrowMaterial);
-      
-      // Position and rotate based on direction
-      switch (direction) {
-        case 'up':
-          arrow.position.set(0, -0.5, -2);
-          break;
-        case 'down':
-          arrow.position.set(0, 0.5, -2);
-          arrow.rotation.z = Math.PI;
-          break;
-        case 'left':
-          arrow.position.set(0.5, 0, -2);
-          arrow.rotation.z = -Math.PI / 2;
-          break;
-        case 'right':
-          arrow.position.set(-0.5, 0, -2);
-          arrow.rotation.z = Math.PI / 2;
-          break;
-      }
-      
-      camera.add(arrow);
-      return arrow;
-    };
+    // Set initial camera rotation to match current angle
+    camera.rotation.y = THREE.MathUtils.degToRad(currentCameraAngle || 0);
     
-    // Create navigation arrows
-    const upArrow = createArrow('up');
-    const downArrow = createArrow('down');
-    const leftArrow = createArrow('left');
-    const rightArrow = createArrow('right');
+    // Calculate initial rotation in degrees (0-360)
+    const initialDegrees = (camera.rotation.y * 180 / Math.PI) % 360;
+    const initialNormalizedDegrees = initialDegrees < 0 ? initialDegrees + 360 : initialDegrees;
+    
+    // Set initial rotation angle state
+    setRotationAngle(initialNormalizedDegrees);
+    
+    // Update torch rotation immediately
+    setTorchRotation(initialNormalizedDegrees);
     
     // Animation loop
     const animate = () => {
@@ -805,13 +823,40 @@ const VRScene = ({
         // Update rotation angle state
         setRotationAngle(normalizedDegrees);
         
-        // Update torch rotation only
+        // Directly update torch rotation every frame during continuous rotation
         setTorchRotation(normalizedDegrees);
+        
+        // Notify parent components about camera rotation
+        if (onCameraRotationUpdate) {
+          onCameraRotationUpdate(normalizedDegrees);
+        }
       }
       
       // Handle continuous movement if enabled
       if (isMoving && movementDirection) {
-        // We removed the updateUserPosition call here
+        // Calculate movement angle based on direction
+        let angleInDegrees;
+        switch (movementDirection) {
+          case 'up':
+            angleInDegrees = 0;
+            break;
+          case 'right':
+            angleInDegrees = 90;
+            break;
+          case 'down':
+            angleInDegrees = 180;
+            break;
+          case 'left':
+            angleInDegrees = 270;
+            break;
+          default:
+            angleInDegrees = 0;
+        }
+        
+        // Update user position on floor map
+        if (updateUserPositionByAngle) {
+          updateUserPositionByAngle(angleInDegrees);
+        }
       }
       
       renderer.render(scene, camera);
@@ -830,8 +875,10 @@ const VRScene = ({
     
     window.addEventListener('resize', handleResize);
     
-    // Initialize camera rotation to match current angle
-    camera.rotation.y = THREE.MathUtils.degToRad(currentCameraAngle || 0);
+    // Notify parent components about camera rotation on mount
+    if (onCameraRotationUpdate) {
+      onCameraRotationUpdate(initialNormalizedDegrees);
+    }
     
     // Cleanup function
     return () => {
@@ -843,7 +890,7 @@ const VRScene = ({
       cursorGeometry.dispose();
       cursorMaterial.dispose();
     };
-  }, [imageUrl, isRotating, side, currentCameraAngle, setTorchRotation]);
+  }, [imageUrl, isRotating, side, currentCameraAngle, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation]);
   
   // Mouse and touch event handlers
   useEffect(() => {
@@ -880,9 +927,16 @@ const VRScene = ({
           const degrees = (camera.rotation.y * 180 / Math.PI) % 360;
           const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
           
-          // Update torch rotation only
+          // Update rotation angle state
           setRotationAngle(normalizedDegrees);
+          
+          // Directly update torch rotation
           setTorchRotation(normalizedDegrees);
+          
+          // Notify parent components about camera rotation
+          if (onCameraRotationUpdate) {
+            onCameraRotationUpdate(normalizedDegrees);
+          }
         }
         
         lastMousePosition.current = { x: e.clientX, y: e.clientY };
@@ -894,44 +948,57 @@ const VRScene = ({
       const normalizedY = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       
       setCursorValues({ x: normalizedX, y: normalizedY });
-      
-      // Determine if cursor is over a navigation arrow
-      // Use normalized position to check if cursor is in arrow regions
-      const threshold = 0.3;
-      let newDirection = null;
-      
-      if (normalizedY > threshold) newDirection = "up";
-      else if (normalizedY < -threshold) newDirection = "down";
-      else if (normalizedX > threshold) newDirection = "right";
-      else if (normalizedX < -threshold) newDirection = "left";
-      
-      if (newDirection !== arrowDirection) {
-        setArrowDirection(newDirection);
-      }
     };
     
     const handleClick = () => {
-      // Handle click on navigation arrows - functionality maintained but no action taken
       if (arrowDirection) {
-        // We removed the updateUserPosition call here
+        // Calculate movement angle based on direction
+        let angleInDegrees;
+        switch (arrowDirection) {
+          case 'up':
+            angleInDegrees = 0;
+            break;
+          case 'right':
+            angleInDegrees = 90;
+            break;
+          case 'down':
+            angleInDegrees = 180;
+            break;
+          case 'left':
+            angleInDegrees = 270;
+            break;
+          default:
+            angleInDegrees = 0;
+        }
+        
+        // Update user position on floor map
+        if (updateUserPositionByAngle) {
+          updateUserPositionByAngle(angleInDegrees);
+        }
       }
     };
     
     const handleKeyDown = (e) => {
+      let direction = null;
+      
       switch (e.key) {
         case 'ArrowUp':
+          direction = 'up';
           setMovementDirection('up');
           setIsMoving(true);
           break;
         case 'ArrowDown':
+          direction = 'down';
           setMovementDirection('down');
           setIsMoving(true);
           break;
         case 'ArrowLeft':
+          direction = 'left';
           setMovementDirection('left');
           setIsMoving(true);
           break;
         case 'ArrowRight':
+          direction = 'right';
           setMovementDirection('right');
           setIsMoving(true);
           break;
@@ -976,9 +1043,16 @@ const VRScene = ({
         const degrees = (camera.rotation.y * 180 / Math.PI) % 360;
         const normalizedDegrees = degrees < 0 ? degrees + 360 : degrees;
         
-        // Update torch rotation only
+        // Update rotation angle state
         setRotationAngle(normalizedDegrees);
+        
+        // Directly update torch rotation
         setTorchRotation(normalizedDegrees);
+        
+        // Notify parent components about camera rotation
+        if (onCameraRotationUpdate) {
+          onCameraRotationUpdate(normalizedDegrees);
+        }
         
         lastMousePosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }
@@ -1005,7 +1079,7 @@ const VRScene = ({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [arrowDirection, setArrowDirection, setCursorValues, isRotating, side, setTorchRotation]);
+  }, [arrowDirection, setArrowDirection, setCursorValues, isRotating, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation]);
   
   const loadingOverlayStyles = {
     position: "absolute",
