@@ -20,51 +20,6 @@ const DataPage = ({ createUser = false }) => {
   const [fetchedData, setFetchedData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDrawerOpen, setIsCreateDrawerOpen] = useState(false);
-  const [useStaticData, setUseStaticData] = useState(false);
-
-  // Static data as fallback
-  const staticData = [
-    {
-      id: 1,
-      project: "PRJ001",
-      name: "Building A",
-      location: "New York",
-      status: "Active",
-      image: "images/building-a.jpg"
-    },
-    {
-      id: 2,
-      project: "PRJ002",
-      name: "Building B",
-      location: "Chicago",
-      status: "Pending",
-      image: "images/building-b.jpg"
-    },
-    {
-      id: 3,
-      project: "PRJ003",
-      name: "Building C",
-      location: "Los Angeles",
-      status: "Completed",
-      image: "images/building-c.jpg"
-    },
-    {
-      id: 4,
-      project: "PRJ004",
-      name: "Building D",
-      location: "Miami",
-      status: "Active",
-      image: "images/building-d.jpg"
-    },
-    {
-      id: 5,
-      project: "PRJ005",
-      name: "Building E",
-      location: "Seattle",
-      status: "Planning",
-      image: "images/building-e.jpg"
-    }
-  ];
 
   useEffect(() => {
     if (apiEndpoint) {
@@ -82,28 +37,18 @@ const DataPage = ({ createUser = false }) => {
           }
           
           const jsonData = await response.json();
-          if (jsonData && jsonData.length > 0) {
-            setFetchedData(jsonData);
-            setUseStaticData(false);
-          } else {
-            console.log("No data from API, using static data");
-            setFetchedData(staticData);
-            setUseStaticData(true);
-          }
+          setFetchedData(jsonData);
         } catch (error) {
           console.error("Failed to fetch data:", error);
-          console.log("API error, falling back to static data");
-          setFetchedData(staticData);
-          setUseStaticData(true);
+          setFetchedData([]);
         } finally {
           setIsLoading(false);
         }
       };
       fetchData();
     } else {
-      console.log("No API endpoint provided, using static data");
-      setFetchedData(staticData);
-      setUseStaticData(true);
+      console.log("No API endpoint provided");
+      setFetchedData([]);
       setIsLoading(false);
     }
   }, [apiEndpoint]);
@@ -114,114 +59,28 @@ const DataPage = ({ createUser = false }) => {
       return;
     }
 
-    if (useStaticData) {
-      // Use static plan details if we're in static data mode
-      const planDetailsData = {
-        project_id: row.project,
-        name: row.name,
-        floors: [
-          {
-            id: 1,
-            name: "Ground Floor",
-            area: "1200 sq ft",
-            status: "Completed"
-          },
-          {
-            id: 2,
-            name: "First Floor",
-            area: "1100 sq ft",
-            status: "In Progress"
-          },
-          {
-            id: 3,
-            name: "Second Floor",
-            area: "1000 sq ft",
-            status: "Pending"
-          }
-        ]
-      };
-
-      navigate("/plan-details", {
-        state: { title: `Plan Details for Project ${row.project}`, data: planDetailsData },
+    try {
+      const viewUrl = `https://api.capture360.ai/building/plans/project/${row.project}/`;
+      const response = await fetch(viewUrl, {
+        headers: {
+          Accept: "application/json",
+        },
       });
-    } else {
-      // Try to fetch from API first
-      try {
-        const viewUrl = `https://api.capture360.ai/building/plans/project/${row.project}/`;
-        const response = await fetch(viewUrl, {
-          headers: {
-            Accept: "application/json",
-          },
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        navigate("/plan-details", {
-          state: { title: `Plan Details for Project ${row.project}`, data },
-        });
-      } catch (error) {
-        console.error("Failed to fetch view data:", error);
-        console.log("Falling back to static plan details");
-        
-        // Fallback to static plan details on API error
-        const planDetailsData = {
-          project_id: row.project,
-          name: row.name,
-          floors: [
-            {
-              id: 1,
-              name: "Ground Floor",
-              area: "1200 sq ft",
-              status: "Completed"
-            },
-            {
-              id: 2,
-              name: "First Floor",
-              area: "1100 sq ft",
-              status: "In Progress"
-            },
-            {
-              id: 3,
-              name: "Second Floor",
-              area: "1000 sq ft",
-              status: "Pending"
-            }
-          ]
-        };
-
-        navigate("/plan-details", {
-          state: { title: `Plan Details for Project ${row.project}`, data: planDetailsData },
-        });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+      
+      const data = await response.json();
+      navigate("/plan-details", {
+        state: { title: `Plan Details for Project ${row.project}`, data },
+      });
+    } catch (error) {
+      console.error("Failed to fetch view data:", error);
     }
   };
 
   const renderImage = (imageUrl, name) => {
-    // If we're using static data, use a placeholder
-    if (useStaticData) {
-      const placeholderUrl = `https://api.capture360.ai/${name.replace(/\s/g, '+')}`;
-      return (
-        <img
-          src={placeholderUrl}
-          alt={name}
-          style={{
-            width: "100px",
-            height: "auto",
-            cursor: "pointer",
-            borderRadius: "8px",
-            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.1)",
-          }}
-          onClick={() =>
-            navigate("/image-view", { state: { imageUrl: placeholderUrl, name } })
-          }
-        />
-      );
-    }
-    
-    // If using API data, use the original API URL
     const url = `https://api.capture360.ai/${imageUrl}`;
     return (
       <img
@@ -379,18 +238,6 @@ const DataPage = ({ createUser = false }) => {
           }}
         >
           {title || "Data Page"}
-          {useStaticData && (
-            <Typography
-              variant="subtitle1"
-              style={{
-                color: "#ff9800",
-                fontWeight: "500",
-                fontSize: "14px",
-              }}
-            >
-              
-            </Typography>
-          )}
         </Typography>
         <Box
           className="button-container"

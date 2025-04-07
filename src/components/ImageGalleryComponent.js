@@ -61,7 +61,7 @@ const ImageGalleryComponent = () => {
   const [leftCameraAngle, setLeftCameraAngle] = useState(0);
   const [rightCameraAngle, setRightCameraAngle] = useState(0);
   const [isAutoRotationEnabled, setIsAutoRotationEnabled] = useState(true); // Enable auto-rotation by default
-  // Add active side state to track which side is currently being interacted with
+  // Remove activeSide state since we want maps to always be visible
   const [activeSide, setActiveSide] = useState(null);
 
   // Initialize with static data
@@ -294,15 +294,11 @@ const ImageGalleryComponent = () => {
     });
   };
 
-  // Handle entering a side (mouse over)
+  //Remove the enter/leave handlers since we want the floor map to always be visible
   const handleSideEnter = (side) => {
     setActiveSide(side);
   };
-
-  // Handle leaving a side (mouse out)
   const handleSideLeave = () => {
-    // Only clear active side if we're not dragging
-    // This is important to prevent flickering when moving across sides
     if (!isMouseDown) {
       setActiveSide(null);
     }
@@ -343,13 +339,13 @@ const ImageGalleryComponent = () => {
       // Ensure the map is always visible
       pointerEvents: 'none', // This prevents the map from capturing mouse events
     };
-
+  
     const mapStyle = {
       width: '100%',
       height: '100%',
       objectFit: 'cover',
     };
-
+  
     const userPositionStyle = {
       position: 'absolute',
       left: `${userPosition.x}%`,
@@ -362,7 +358,7 @@ const ImageGalleryComponent = () => {
       boxShadow: '0 0 0 2px white',
       zIndex: 101,
     };
-
+  
     // Improved torch light indicator component that rotates correctly
     const TorchLightIndicator = () => {
       return (
@@ -428,7 +424,7 @@ const ImageGalleryComponent = () => {
         return <div key={index} style={navPointStyle} title={point.label || `Point ${index+1}`}></div>;
       });
     };
-
+  
     // Render the line graph (path) of visited positions
     const renderLineGraph = () => {
       if (!showLineGraphOnMap || visitedPositions.length < 2) return null;
@@ -471,7 +467,7 @@ const ImageGalleryComponent = () => {
         </svg>
       );
     };
-
+  
     // Style for the angle display container below the map
     const angleDisplayContainerStyle = {
       position: 'absolute',
@@ -488,7 +484,7 @@ const ImageGalleryComponent = () => {
       // Ensure the angle display is always visible
       pointerEvents: 'none', // This prevents the angle display from capturing mouse events
     };
-
+  
     return (
       <>
         <div style={mapContainerStyle}>
@@ -588,8 +584,158 @@ const ImageGalleryComponent = () => {
           isAutoRotationEnabled={isAutoRotationEnabled}
           toggleAutoRotation={toggleAutoRotation}
           currentCameraAngle={side === 'left' ? leftCameraAngle : rightCameraAngle}
-          activeSide={activeSide}
+          alwaysShowMap={true} // New prop to always show the map
+          isFullScreenMode={isFullScreenMode && activeFullScreenSide === side}
         />
+        
+        {/* VR View Button for each side */}
+        <Button 
+  onClick={() => handleModeChange('vr', side)} 
+  variant="contained" 
+  color="primary"
+  style={{
+    position: 'absolute',
+    bottom: '20px',
+    left: '50%',
+    transform: 'translateX(-50%)', // Center horizontally
+    zIndex: 1000,
+    width: '200px', // Optional: reduced width
+    padding: '6px 12px',
+    fontSize: '12px'
+  }}
+>
+  VR View
+</Button>
+
+      </div>
+    );
+  };
+
+  // Add state for fullscreen mode
+  const [isFullScreenMode, setIsFullScreenMode] = useState(false);
+  const [activeFullScreenSide, setActiveFullScreenSide] = useState(null);
+  
+  // Store the original layout dimensions to restore after exiting fullscreen
+  const [originalLayout, setOriginalLayout] = useState(null);
+
+  // Function to handle ESC key press
+  useEffect(() => {
+    const handleEscKey = (event) => {
+      if (event.key === 'Escape' && isFullScreenMode) {
+        exitFullScreenMode();
+      }
+    };
+
+    // Add event listener for keydown events
+    window.addEventListener('keydown', handleEscKey);
+
+    // Cleanup function to remove event listener
+    return () => {
+      window.removeEventListener('keydown', handleEscKey);
+    };
+  }, [isFullScreenMode]); // Only re-run effect if isFullScreenMode changes
+
+  // Function to exit fullscreen mode
+  const exitFullScreenMode = () => {
+    setIsFullScreenMode(false);
+    setActiveFullScreenSide(null);
+    
+    // If we have a document element that's in fullscreen mode, exit that too
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(err => {
+        console.error(`Error attempting to exit full-screen mode: ${err.message}`);
+      });
+    }
+  };
+
+  // Updated handleModeChange function to handle VR view switching with side parameter
+  const handleModeChange = (mode, side) => {
+    if (mode === 'vr') {
+      // Store current layout before going fullscreen
+      const mainContainer = document.querySelector('.main-container');
+      if (mainContainer) {
+        setOriginalLayout({
+          width: mainContainer.offsetWidth,
+          height: mainContainer.offsetHeight
+        });
+      }
+      
+      setIsFullScreenMode(true);
+      setActiveFullScreenSide(side);
+      console.log(`Switching to VR mode for ${side} side`);
+      
+      // Attempt to use the Fullscreen API if available
+      const vrContainer = document.querySelector(`.vr-container-${side}`);
+      if (vrContainer && vrContainer.requestFullscreen) {
+        vrContainer.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+        });
+      }
+    }
+  };
+
+  // Render the full screen VR view
+  const renderFullScreenVRView = () => {
+    if (!isFullScreenMode) return null;
+
+    // Determine which side's data to use
+    const currentImageObj = activeFullScreenSide === 'left' 
+      ? imagesLeft[currentIndexLeft] 
+      : imagesRight[currentIndexRight];
+    
+    return (
+      <div 
+        className={`vr-container-${activeFullScreenSide}`}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          zIndex: 2000,
+          backgroundColor: '#000',
+        }}
+      >
+        
+        
+        <VRScene 
+          imageUrl={currentImageObj?.image} 
+          arrowDirection={arrowDirection} 
+          setArrowDirection={setArrowDirection} 
+          updateUserPosition={updateUserPosition}
+          setCursorValues={setCursorValues}
+          side={activeFullScreenSide}
+          torchRotation={torchRotation}
+          setTorchRotation={setTorchRotation}
+          onCameraRotationUpdate={(angle) => handleCameraRotationUpdate(angle, activeFullScreenSide)}
+          isAutoRotationEnabled={isAutoRotationEnabled}
+          toggleAutoRotation={toggleAutoRotation}
+          currentCameraAngle={activeFullScreenSide === 'left' ? leftCameraAngle : rightCameraAngle}
+          alwaysShowMap={true}
+          isFullScreenMode={true}
+        />
+        
+        {/* Add floor map overlay in fullscreen mode too */}
+        <FloorMapOverlay 
+          rotation={0}
+          userPosition={userPosition}
+          side={activeFullScreenSide}
+        />
+        
+        {/* Exit fullscreen button as an alternative to ESC key */}
+        <Button 
+          onClick={exitFullScreenMode} 
+          variant="contained" 
+          color="secondary"
+          style={{
+            position: 'absolute',
+            bottom: '20px',
+            right: '20px',
+            zIndex: 2010,
+          }}
+        >
+          Exit VR View
+        </Button>
       </div>
     );
   };
@@ -597,6 +743,7 @@ const ImageGalleryComponent = () => {
   return (
     <ThemeProvider theme={theme}>
       <div
+        className="main-container"
         style={{
           height: "100vh",
           display: "flex",
@@ -608,13 +755,16 @@ const ImageGalleryComponent = () => {
         onMouseDown={handleMouseDown}
         onMouseUp={handleMouseUp}
       >
-        {/* Split View */}
-        <div style={{ display: 'flex', width: '100%', height: '100%' }}>
-          <div 
-            style={{ flex: 1, padding: '10px', position: 'relative' }}
-            onMouseEnter={() => handleSideEnter('left')}
-            onMouseLeave={handleSideLeave}
-          >
+      
+        {/* Split View - We'll hide this completely when in fullscreen mode instead of trying to adjust its contents */}
+        <div 
+          style={{ 
+            display: isFullScreenMode ? 'none' : 'flex', 
+            width: '100%', 
+            height: '100%'
+          }}
+        >
+          <div style={{ flex: 1, padding: '10px', position: 'relative' }}>
             <Typography variant="h6">Select Date</Typography>
             <Select
               value={selectedDateLeft}
@@ -642,7 +792,7 @@ const ImageGalleryComponent = () => {
               <Button onClick={handlePause}>{isPaused ? 'Play' : 'Pause'}</Button>
               <Button onClick={handleNextLeft}>Next</Button>
             </ButtonGroup>
-            <div style={{ height: '80vh', marginTop: '10px', position: 'relative' }}>
+            <div style={{ height: '70vh', marginTop: '10px', position: 'relative' }}>
               {renderImage(imagesLeft[currentIndexLeft], 'left')}
               <FloorMapOverlay 
                 rotation={0} // Fixed to 0 so the map doesn't rotate
@@ -651,11 +801,7 @@ const ImageGalleryComponent = () => {
               />
             </div>
           </div>
-          <div 
-            style={{ flex: 1, padding: '10px', position: 'relative' }}
-            onMouseEnter={() => handleSideEnter('right')}
-            onMouseLeave={handleSideLeave}
-          >
+          <div style={{ flex: 1, padding: '10px', position: 'relative' }}>
             <Typography variant="h6">Select Date</Typography>
             <Select
               value={selectedDateRight}
@@ -675,7 +821,7 @@ const ImageGalleryComponent = () => {
                 <MenuItem disabled>No dates available</MenuItem>
               )}
             </Select>
-            <div style={{ height: '80vh', marginTop: '10px', position: 'relative' }}>
+            <div style={{ height: '70vh', marginTop: '10px', position: 'relative' }}>
               {renderImage(imagesRight[currentIndexRight], 'right')}
               <FloorMapOverlay 
                 rotation={0} // Fixed to 0 so the map doesn't rotate
@@ -686,24 +832,8 @@ const ImageGalleryComponent = () => {
           </div>
         </div>
 
-        {/* Toggle for line graph visibility */}
-        <div style={{
-          position: 'absolute',
-          bottom: '60px',
-          left: '20px',
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          color: 'white',
-          padding: '10px',
-          borderRadius: '5px',
-          zIndex: 1000,
-          cursor: 'pointer',
-        }} onClick={() => setShowLineGraphOnMap(!showLineGraphOnMap)}>
-          <Typography variant="body2">
-            {showLineGraphOnMap ? 'Hide Path' : 'Show Path'}
-          </Typography>
-        </div>
-
-        {/* Display cursor movement values */}
+        
+        {/* Display cursor movement values - always visible */}
         <div style={{
           position: 'absolute',
           bottom: '20px',
@@ -712,12 +842,15 @@ const ImageGalleryComponent = () => {
           color: 'white',
           padding: '10px',
           borderRadius: '5px',
-          zIndex: 1000,
+          zIndex: isFullScreenMode ? 2010 : 1000,
         }}>
           <Typography variant="body2">
             Cursor Position: X: {cursorValues.x.toFixed(2)}, Y: {cursorValues.y.toFixed(2)}
           </Typography>
         </div>
+
+        {/* Render fullscreen VR view */}
+        {renderFullScreenVRView()}
       </div>
     </ThemeProvider>
   );  
@@ -736,7 +869,10 @@ const VRScene = ({
   toggleRotation,
   updateFloorMapOrientation,
   updateUserPositionByAngle,
-  onCameraRotationUpdate
+  onCameraRotationUpdate,
+  syncRotation, // New prop to enable/disable synchronized rotation
+  onRotationSync, // New callback to send rotation updates to other components
+  alwaysShowMap = true
 }) => {
   const vrSceneRef = useRef(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0, z: -2 });
@@ -749,6 +885,17 @@ const VRScene = ({
   // Track the current rotation angle
   const [rotationAngle, setRotationAngle] = useState(currentCameraAngle || 0);
   const frameId = useRef(null);
+  
+  // Apply external rotation updates
+  useEffect(() => {
+    if (cameraRef.current && torchRotation !== undefined && !isNaN(torchRotation)) {
+      // Only apply external rotation if not caused by this component
+      if (Math.abs(rotationAngle - torchRotation) > 1) {
+        cameraRef.current.rotation.y = THREE.MathUtils.degToRad(torchRotation);
+        setRotationAngle(torchRotation);
+      }
+    }
+  }, [torchRotation]);
   
   // Initialize Three.js scene once
   useEffect(() => {
@@ -826,6 +973,11 @@ const VRScene = ({
         // Directly update torch rotation every frame during continuous rotation
         setTorchRotation(normalizedDegrees);
         
+        // Sync rotation with other components
+        if (onRotationSync) {
+          onRotationSync(normalizedDegrees);
+        }
+        
         // Notify parent components about camera rotation
         if (onCameraRotationUpdate) {
           onCameraRotationUpdate(normalizedDegrees);
@@ -880,6 +1032,11 @@ const VRScene = ({
       onCameraRotationUpdate(initialNormalizedDegrees);
     }
     
+    // Sync rotation with other components on mount
+    if (onRotationSync) {
+      onRotationSync(initialNormalizedDegrees);
+    }
+    
     // Cleanup function
     return () => {
       cancelAnimationFrame(frameId.current);
@@ -890,7 +1047,7 @@ const VRScene = ({
       cursorGeometry.dispose();
       cursorMaterial.dispose();
     };
-  }, [imageUrl, isRotating, side, currentCameraAngle, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation]);
+  }, [imageUrl, isRotating, side, currentCameraAngle, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation, onRotationSync]);
   
   // Mouse and touch event handlers
   useEffect(() => {
@@ -932,6 +1089,11 @@ const VRScene = ({
           
           // Directly update torch rotation
           setTorchRotation(normalizedDegrees);
+          
+          // Sync rotation with other components
+          if (onRotationSync) {
+            onRotationSync(normalizedDegrees);
+          }
           
           // Notify parent components about camera rotation
           if (onCameraRotationUpdate) {
@@ -1003,7 +1165,7 @@ const VRScene = ({
           setIsMoving(true);
           break;
         case 'r':
-          // Keep the rotation toggle functionality
+          // Toggle rotation
           toggleRotation();
           break;
       }
@@ -1049,6 +1211,11 @@ const VRScene = ({
         // Directly update torch rotation
         setTorchRotation(normalizedDegrees);
         
+        // Sync rotation with other components
+        if (onRotationSync) {
+          onRotationSync(normalizedDegrees);
+        }
+        
         // Notify parent components about camera rotation
         if (onCameraRotationUpdate) {
           onCameraRotationUpdate(normalizedDegrees);
@@ -1079,7 +1246,7 @@ const VRScene = ({
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
     };
-  }, [arrowDirection, setArrowDirection, setCursorValues, isRotating, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation]);
+  }, [arrowDirection, setArrowDirection, setCursorValues, isRotating, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation, onRotationSync]);
   
   const loadingOverlayStyles = {
     position: "absolute",
