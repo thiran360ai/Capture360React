@@ -149,6 +149,8 @@ const PlanDetailsPage = () => {
             padding: "12px 24px",
             borderRadius: "20px",
             fontWeight: "bold",
+            width: "200px",
+            textAlign: "center",
           }}
         >
           Back to Project List

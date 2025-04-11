@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect,useCallback, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -346,21 +346,8 @@ const ImageGalleryComponent = () => {
       objectFit: 'cover',
     };
   
-    const userPositionStyle = {
-      position: 'absolute',
-      left: `${userPosition.x}%`,
-      top: `${userPosition.y}%`,
-      width: '8px',
-      height: '8px',
-      borderRadius: '50%',
-      backgroundColor: 'red',
-      transform: 'translate(-50%, -50%)',
-      boxShadow: '0 0 0 2px white',
-      zIndex: 101,
-    };
-  
-    // Improved torch light indicator component that rotates correctly
-    const TorchLightIndicator = () => {
+    // Both user position and torch indicator will now be handled in a single component
+    const UserPositionWithIndicator = () => {
       return (
         <div
           style={{
@@ -399,9 +386,9 @@ const ImageGalleryComponent = () => {
               opacity="0.8"
             />
             
-            {/* Central dot (user position indicator) */}
+            {/* Central dot (user position indicator) - now part of the SVG that rotates */}
             <circle cx="30" cy="30" r="5" fill="#FFD700" />
-            <circle cx="30" cy="30" r="3" fill="white" />
+            <circle cx="30" cy="30" r="3" fill="red" />
           </svg>
         </div>
       );
@@ -489,7 +476,7 @@ const ImageGalleryComponent = () => {
       <>
         <div style={mapContainerStyle}>
           <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden' }}>
-            {/* Note: Fixed the map to not rotate with the camera angle */}
+            {/* Map background that doesn't rotate */}
             <div style={{
               width: '100%', 
               height: '100%', 
@@ -504,10 +491,8 @@ const ImageGalleryComponent = () => {
             </div>
             {/* Line graph showing the path */}
             {renderLineGraph()}
-            {/* User position dot */}
-            <div style={userPositionStyle}></div>
-            {/* Torch light indicator - this is the only component that rotates */}
-            <TorchLightIndicator />
+            {/* Combined user position and torch indicator that both rotate together */}
+            <UserPositionWithIndicator />
           </div>
         </div>
         
@@ -870,48 +855,70 @@ const VRScene = ({
   updateFloorMapOrientation,
   updateUserPositionByAngle,
   onCameraRotationUpdate,
-  syncRotation, // New prop to enable/disable synchronized rotation
-  onRotationSync, // New callback to send rotation updates to other components
   alwaysShowMap = true
 }) => {
   const vrSceneRef = useRef(null);
   const [cursorPos, setCursorPos] = useState({ x: 0, y: 0, z: -2 });
   const cameraRef = useRef(null);
+  const rendererRef = useRef(null);
+  const sceneRef = useRef(null);
+  const mapRef = useRef(null);
   const [cameraRotation, setCameraRotation] = useState({ x: 0, y: 0, z: 0 });
   const [isMoving, setIsMoving] = useState(false);
   const [movementDirection, setMovementDirection] = useState(null);
   const lastMousePosition = useRef({ x: 0, y: 0 });
   const [sceneLoaded, setSceneLoaded] = useState(false);
-  // Track the current rotation angle
   const [rotationAngle, setRotationAngle] = useState(currentCameraAngle || 0);
   const frameId = useRef(null);
+  const isInitialized = useRef(false);
+  const resizeTimeoutRef = useRef(null);
+  const textureRef = useRef(null);
+  const sphereRef = useRef(null);
+  const continuousRenderingRef = useRef(false);
+  const loadingDivRef = useRef(null);
   
-  // Apply external rotation updates
-  useEffect(() => {
-    if (cameraRef.current && torchRotation !== undefined && !isNaN(torchRotation)) {
-      // Only apply external rotation if not caused by this component
-      if (Math.abs(rotationAngle - torchRotation) > 1) {
-        cameraRef.current.rotation.y = THREE.MathUtils.degToRad(torchRotation);
-        setRotationAngle(torchRotation);
-      }
+  // Force continuous rendering for a short duration
+  const forceContinuousRendering = (duration = 1000) => {
+    continuousRenderingRef.current = true;
+    
+    // Force immediate render
+    if (rendererRef.current && sceneRef.current && cameraRef.current) {
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
     }
-  }, [torchRotation]);
+    
+    // Continue rendering for the specified duration
+    setTimeout(() => {
+      continuousRenderingRef.current = false;
+    }, duration);
+  };
   
   // Initialize Three.js scene once
   useEffect(() => {
-    if (!vrSceneRef.current) return;
+    if (!vrSceneRef.current || isInitialized.current) return;
+    
+    isInitialized.current = true;
     
     // Create scene
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
     
     // Create camera
     const camera = new THREE.PerspectiveCamera(75, vrSceneRef.current.clientWidth / vrSceneRef.current.clientHeight, 0.1, 1000);
     camera.position.set(0, 0, 0);
     cameraRef.current = camera;
     
-    // Create renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    // Create renderer with transparent background instead of black
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true, 
+      alpha: true,
+      preserveDrawingBuffer: true,
+      powerPreference: 'high-performance'
+    });
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(vrSceneRef.current.clientWidth, vrSceneRef.current.clientHeight);
+    // Set to transparent instead of solid black
+    renderer.setClearColor(0x000000, 0); 
+    rendererRef.current = renderer;
     
     // Clean up any previous canvas
     while (vrSceneRef.current.firstChild) {
@@ -920,18 +927,103 @@ const VRScene = ({
     
     vrSceneRef.current.appendChild(renderer.domElement);
     
+    // Create a loading indicator
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'vr-scene-loading-indicator';
+    loadingDiv.style.position = 'absolute';
+    loadingDiv.style.top = '50%';
+    loadingDiv.style.left = '50%';
+    loadingDiv.style.transform = 'translate(-50%, -50%)';
+    loadingDiv.style.color = 'white';
+    loadingDiv.style.fontFamily = 'Arial, sans-serif';
+    loadingDiv.style.fontSize = '16px';
+    loadingDiv.style.background = 'rgba(0,0,0,0.5)';
+    loadingDiv.style.padding = '10px 20px';
+    loadingDiv.style.borderRadius = '5px';
+    loadingDiv.style.zIndex = '1000';
+    loadingDiv.textContent = 'Loading...';
+    vrSceneRef.current.appendChild(loadingDiv);
+    loadingDivRef.current = loadingDiv;
+    
     // Create sphere geometry for 360 image
     const geometry = new THREE.SphereGeometry(500, 60, 40);
     geometry.scale(-1, 1, 1); // Invert the sphere so the texture renders on the inside
     
-    // Load the texture
-    const texture = new THREE.TextureLoader().load(imageUrl, () => {
-      setSceneLoaded(true);
+    // Create a temporary colored material to show while loading
+    const tempMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0x333333, 
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.5
     });
-    
-    const material = new THREE.MeshBasicMaterial({ map: texture });
-    const sphere = new THREE.Mesh(geometry, material);
+    const sphere = new THREE.Mesh(geometry, tempMaterial);
+    sphereRef.current = sphere;
     scene.add(sphere);
+    
+    // Load the texture with higher priority
+    const textureLoader = new THREE.TextureLoader();
+    textureLoader.setCrossOrigin('anonymous');
+    
+    // Pre-render with temp material to avoid blank screen
+    renderer.render(scene, camera);
+    
+    const texture = textureLoader.load(
+      imageUrl, 
+      (loadedTexture) => {
+        // Store texture reference
+        textureRef.current = loadedTexture;
+        textureRef.current.minFilter = THREE.LinearFilter;
+        textureRef.current.magFilter = THREE.LinearFilter;
+        textureRef.current.anisotropy = renderer.capabilities.getMaxAnisotropy();
+        
+        // Create final material with loaded texture
+        const material = new THREE.MeshBasicMaterial({ 
+          map: textureRef.current,
+          side: THREE.DoubleSide
+        });
+        
+        // Update sphere with new material
+        sphere.material.dispose();
+        sphere.material = material;
+        
+        // Safely remove loading indicator if it exists
+        if (loadingDivRef.current && document.getElementById('vr-scene-loading-indicator')) {
+          try {
+            if (vrSceneRef.current && vrSceneRef.current.contains(loadingDivRef.current)) {
+              vrSceneRef.current.removeChild(loadingDivRef.current);
+            }
+          } catch (err) {
+            console.log("Loading indicator already removed");
+          }
+        }
+        
+        setSceneLoaded(true);
+        
+        // Force continuous rendering for a few seconds after loading
+        forceContinuousRendering(3000);
+        
+        // Initial render after loading
+        renderer.render(scene, camera);
+      },
+      // Progress callback
+      (xhr) => {
+        if (loadingDivRef.current) {
+          const percent = Math.round(xhr.loaded / xhr.total * 100);
+          loadingDivRef.current.textContent = `Loading: ${percent}%`;
+          
+          // Render during loading to avoid black screen
+          renderer.render(scene, camera);
+        }
+      },
+      // Error callback
+      (error) => {
+        console.error('Error loading texture:', error);
+        if (loadingDivRef.current) {
+          loadingDivRef.current.textContent = 'Error loading panorama';
+        }
+        setSceneLoaded(false);
+      }
+    );
     
     // Add cursor/reticle
     const cursorGeometry = new THREE.RingGeometry(0.02, 0.03, 32);
@@ -954,9 +1046,17 @@ const VRScene = ({
     // Update torch rotation immediately
     setTorchRotation(initialNormalizedDegrees);
     
-    // Animation loop
+    // Animation loop - ensure continuous rendering
     const animate = () => {
       frameId.current = requestAnimationFrame(animate);
+      
+      // Check if we should render this frame
+      let shouldRender = false;
+      
+      // Always render during continuous rendering mode
+      if (continuousRenderingRef.current) {
+        shouldRender = true;
+      }
       
       // Handle continuous rotation if enabled
       if (isRotating) {
@@ -973,15 +1073,17 @@ const VRScene = ({
         // Directly update torch rotation every frame during continuous rotation
         setTorchRotation(normalizedDegrees);
         
-        // Sync rotation with other components
-        if (onRotationSync) {
-          onRotationSync(normalizedDegrees);
-        }
-        
         // Notify parent components about camera rotation
         if (onCameraRotationUpdate) {
           onCameraRotationUpdate(normalizedDegrees);
         }
+        
+        // Update floor map orientation during rotation
+        if (updateFloorMapOrientation) {
+          updateFloorMapOrientation(normalizedDegrees);
+        }
+        
+        shouldRender = true;
       }
       
       // Handle continuous movement if enabled
@@ -1009,57 +1111,156 @@ const VRScene = ({
         if (updateUserPositionByAngle) {
           updateUserPositionByAngle(angleInDegrees);
         }
+        
+        shouldRender = true;
       }
       
-      renderer.render(scene, camera);
+      // Render if needed
+      if (shouldRender && renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
     };
     
     animate();
     
-    // Handle window resize
+    // Enhanced resize handler to prevent blank screens
     const handleResize = () => {
-      if (!vrSceneRef.current) return;
+      if (!vrSceneRef.current || !renderer || !camera) return;
       
-      camera.aspect = vrSceneRef.current.clientWidth / vrSceneRef.current.clientHeight;
+      // Clear any existing timeout
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current);
+      }
+      
+      // Enable continuous rendering during resize
+      forceContinuousRendering(1000);
+      
+      // Get new dimensions
+      const width = vrSceneRef.current.clientWidth;
+      const height = vrSceneRef.current.clientHeight;
+      
+      // Update camera
+      camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(vrSceneRef.current.clientWidth, vrSceneRef.current.clientHeight);
+      
+      // Update renderer with new dimensions
+      renderer.setSize(width, height);
+      
+      // Immediate render to prevent blank screen
+      renderer.render(scene, camera);
+      
+      // Additional renders to ensure smooth transition
+      resizeTimeoutRef.current = setTimeout(() => {
+        renderer.render(scene, camera);
+      }, 100);
+    };
+    
+    // Improved orientation change handler
+    const handleOrientationChange = () => {
+      // Enable continuous rendering during orientation change
+      forceContinuousRendering(2000);
+      
+      // Handle resize immediately
+      handleResize();
+      
+      // Ensure multiple renders happen during orientation change
+      for (let i = 1; i <= 5; i++) {
+        setTimeout(() => {
+          if (renderer && scene && camera) {
+            renderer.render(scene, camera);
+          }
+        }, i * 200);
+      }
     };
     
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleOrientationChange);
+    
+    // Improved visibility change handler
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && renderer && scene && camera) {
+        // Force continuous rendering when tab becomes visible again
+        forceContinuousRendering(1000);
+        handleResize();
+        renderer.render(scene, camera);
+      }
+    });
     
     // Notify parent components about camera rotation on mount
     if (onCameraRotationUpdate) {
       onCameraRotationUpdate(initialNormalizedDegrees);
     }
     
-    // Sync rotation with other components on mount
-    if (onRotationSync) {
-      onRotationSync(initialNormalizedDegrees);
-    }
-    
     // Cleanup function
     return () => {
-      cancelAnimationFrame(frameId.current);
+      isInitialized.current = false;
+      if (frameId.current) cancelAnimationFrame(frameId.current);
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current);
+      
+      // Safely remove loading indicator if it still exists
+      if (loadingDivRef.current && document.getElementById('vr-scene-loading-indicator')) {
+        try {
+          if (vrSceneRef.current && vrSceneRef.current.contains(loadingDivRef.current)) {
+            vrSceneRef.current.removeChild(loadingDivRef.current);
+          }
+        } catch (err) {
+          console.log("Loading indicator already removed");
+        }
+      }
+      
       window.removeEventListener('resize', handleResize);
-      renderer.dispose();
-      geometry.dispose();
-      material.dispose();
-      cursorGeometry.dispose();
-      cursorMaterial.dispose();
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      document.removeEventListener('visibilitychange', handleOrientationChange);
+      
+      if (renderer) renderer.dispose();
+      if (geometry) geometry.dispose();
+      if (tempMaterial) tempMaterial.dispose();
+      if (textureRef.current) textureRef.current.dispose();
+      if (cursorGeometry) cursorGeometry.dispose();
+      if (cursorMaterial) cursorMaterial.dispose();
+      
+      rendererRef.current = null;
+      sceneRef.current = null;
+      textureRef.current = null;
+      sphereRef.current = null;
+      loadingDivRef.current = null;
     };
-  }, [imageUrl, isRotating, side, currentCameraAngle, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation, onRotationSync]);
+  }, [imageUrl, currentCameraAngle, onCameraRotationUpdate, setTorchRotation]);
   
-  // Mouse and touch event handlers
+  // Mouse and touch event handlers with continuous rendering
   useEffect(() => {
-    if (!vrSceneRef.current || !cameraRef.current) return;
+    if (!vrSceneRef.current || !cameraRef.current || !rendererRef.current || !sceneRef.current) return;
     
     const camera = cameraRef.current;
+    const renderer = rendererRef.current;
+    const scene = sceneRef.current;
+    
+    // Flag for tracking active dragging
+    let isDragging = false;
     
     const handleMouseDown = (e) => {
+      isDragging = true;
       lastMousePosition.current = { x: e.clientX, y: e.clientY };
+      
+      // Enable continuous rendering during drag
+      forceContinuousRendering(500);
+    };
+    
+    const handleMouseUp = () => {
+      isDragging = false;
+      
+      // Ensure one final render after drag ends
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
     };
     
     const handleMouseMove = (e) => {
+      // Ensure we render during mouse movement to avoid blank screens
+      if (renderer && scene && camera) {
+        forceContinuousRendering(300);
+      }
+      
       if (e.buttons === 1 && !isRotating) { // Left mouse button down and not in auto-rotation mode
         const deltaX = e.clientX - lastMousePosition.current.x;
         const deltaY = e.clientY - lastMousePosition.current.y;
@@ -1090,15 +1291,18 @@ const VRScene = ({
           // Directly update torch rotation
           setTorchRotation(normalizedDegrees);
           
-          // Sync rotation with other components
-          if (onRotationSync) {
-            onRotationSync(normalizedDegrees);
-          }
-          
           // Notify parent components about camera rotation
           if (onCameraRotationUpdate) {
             onCameraRotationUpdate(normalizedDegrees);
           }
+          
+          // Update floor map orientation
+          if (updateFloorMapOrientation) {
+            updateFloorMapOrientation(normalizedDegrees);
+          }
+          
+          // Force render during manual rotation
+          renderer.render(scene, camera);
         }
         
         lastMousePosition.current = { x: e.clientX, y: e.clientY };
@@ -1113,6 +1317,9 @@ const VRScene = ({
     };
     
     const handleClick = () => {
+      // Force render on click
+      forceContinuousRendering(500);
+      
       if (arrowDirection) {
         // Calculate movement angle based on direction
         let angleInDegrees;
@@ -1141,6 +1348,9 @@ const VRScene = ({
     };
     
     const handleKeyDown = (e) => {
+      // Force render on key press
+      forceContinuousRendering(500);
+      
       let direction = null;
       
       switch (e.key) {
@@ -1165,7 +1375,7 @@ const VRScene = ({
           setIsMoving(true);
           break;
         case 'r':
-          // Toggle rotation
+          // Keep the rotation toggle functionality
           toggleRotation();
           break;
       }
@@ -1173,16 +1383,37 @@ const VRScene = ({
     
     const handleKeyUp = (e) => {
       setIsMoving(false);
+      
+      // Final render after key release
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
     };
     
-    // Touch event handlers for mobile
+    // Touch event handlers for mobile with continuous rendering
     const handleTouchStart = (e) => {
+      isDragging = true;
       if (e.touches.length === 1) {
         lastMousePosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        
+        // Enable continuous rendering during touch
+        forceContinuousRendering(500);
+      }
+    };
+    
+    const handleTouchEnd = () => {
+      isDragging = false;
+      
+      // Ensure one final render after touch ends
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
       }
     };
     
     const handleTouchMove = (e) => {
+      // Force continuous rendering during touch movement
+      forceContinuousRendering(300);
+      
       if (e.touches.length === 1 && !isRotating) {
         const deltaX = e.touches[0].clientX - lastMousePosition.current.x;
         const deltaY = e.touches[0].clientY - lastMousePosition.current.y;
@@ -1211,15 +1442,18 @@ const VRScene = ({
         // Directly update torch rotation
         setTorchRotation(normalizedDegrees);
         
-        // Sync rotation with other components
-        if (onRotationSync) {
-          onRotationSync(normalizedDegrees);
-        }
-        
         // Notify parent components about camera rotation
         if (onCameraRotationUpdate) {
           onCameraRotationUpdate(normalizedDegrees);
         }
+        
+        // Update floor map orientation
+        if (updateFloorMapOrientation) {
+          updateFloorMapOrientation(normalizedDegrees);
+        }
+        
+        // Force render after touch rotation
+        renderer.render(scene, camera);
         
         lastMousePosition.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       }
@@ -1228,11 +1462,13 @@ const VRScene = ({
     // Attach event listeners
     vrSceneRef.current.addEventListener('mousedown', handleMouseDown);
     vrSceneRef.current.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
     vrSceneRef.current.addEventListener('click', handleClick);
     document.addEventListener('keydown', handleKeyDown);
     document.addEventListener('keyup', handleKeyUp);
     vrSceneRef.current.addEventListener('touchstart', handleTouchStart);
     vrSceneRef.current.addEventListener('touchmove', handleTouchMove);
+    vrSceneRef.current.addEventListener('touchend', handleTouchEnd);
     
     // Cleanup function
     return () => {
@@ -1242,49 +1478,58 @@ const VRScene = ({
         vrSceneRef.current.removeEventListener('click', handleClick);
         vrSceneRef.current.removeEventListener('touchstart', handleTouchStart);
         vrSceneRef.current.removeEventListener('touchmove', handleTouchMove);
+        vrSceneRef.current.removeEventListener('touchend', handleTouchEnd);
       }
+      document.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('keyup', handleKeyUp);
+      
+      isDragging = false;
     };
-  }, [arrowDirection, setArrowDirection, setCursorValues, isRotating, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation, onRotationSync]);
-  
-  const loadingOverlayStyles = {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    color: "white",
-    fontSize: "24px",
-    zIndex: 1001,
-  };
+  }, [arrowDirection, setArrowDirection, setCursorValues, isRotating, onCameraRotationUpdate, updateUserPositionByAngle, setTorchRotation, updateFloorMapOrientation]);
   
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div ref={vrSceneRef} style={{ width: "100%", height: "100%" }}></div>
-      
-      {!sceneLoaded && (
-        <div style={loadingOverlayStyles}>
-          Loading 360° View...
-        </div>
-      )}
+    <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+      {/* VR Scene container */}
+      <div 
+        ref={vrSceneRef} 
+        style={{ 
+          width: "100%", 
+          height: "100%",
+          backgroundColor: "transparent", // Transparent background instead of black
+          position: "absolute",
+          top: 0,
+          left: 0
+        }}
+      ></div>
       
       {/* Rotation indicator */}
       <div style={{
         position: "absolute",
         top: "10px",
         left: "10px",
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        backgroundColor: "rgba(0, 0, 0, 0.6)",
         color: "white",
         padding: "5px 10px",
         borderRadius: "4px",
         fontSize: "14px",
+        zIndex: 1002,
+        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
       }}>
         Angle: {Math.round(rotationAngle)}°
+      </div>
+      
+      {/* Floor map container */}
+      <div style={{
+        position: "absolute",
+        bottom: "20px",
+        right: "20px",
+        pointerEvents: "none",
+        zIndex: 1002,
+        opacity: alwaysShowMap ? 1 : 0,
+        transition: "opacity 0.2s ease-in-out",
+      }}>
+        {/* Floor map component would go here if needed */}
       </div>
     </div>
   );
